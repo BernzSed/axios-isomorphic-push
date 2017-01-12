@@ -42,7 +42,7 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       // http/2 pseudo headers: :method, :path, :scheme, :authority
       const requestHeaders = Object.assign({}, config.headers, {
         ':authority': requestUrl.host
-      }) // TODO exclude unneeded headers like user-agent
+      }); // TODO exclude unneeded headers like user-agent
       const pushStream = pageResponse.push(requestUrl.path, {
         method: config.method,
         request: requestHeaders
