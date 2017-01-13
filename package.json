@@ -1,5 +1,5 @@
 {
-  "name": "@bernzsed/axios-isomorpic-push",
+  "name": "@bernzsed/axios-isomorphic-push",
   "version": "0.0.1",
   "description": "Uses Axios, along with the redux and spdy npm libraries, to improve the performance of isomorphic react web pages in http/2",
   "main": "./lib/index.js",
