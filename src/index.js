@@ -76,6 +76,7 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       // https://github.com/indutny/spdy-transport/blob/0bc70336508388ff5d111fd5027d3c31a56c7875/lib/spdy-transport/protocol/http2/framer.js#L344
       config.isomorphicPushStream.end(response.data);
     }
+    return response;
   }, function responseRejectedInterceptor(error) {
     // error = { code, errno, syscall, hostname, host, port, config, response }
     const config = error.config;
