@@ -21,8 +21,7 @@
     "isomorphic"
   ],
   "dependencies": {
-    "axios": "^0.15.3",
-    "redux-thunk": "^2.1.0"
+    "axios": "^0.15.3"
   },
   "devDependencies": {
     "babel-cli": "^6.18.0",
