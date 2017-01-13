@@ -5,7 +5,7 @@ const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
 function canPush(requestUrl, config) {
   // TODO make sure page request was made in http/2
-  return config.method.toUpperCase() in pushableMethods;
+  return pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
   // TODO don't push the same thing multiple times
 }
