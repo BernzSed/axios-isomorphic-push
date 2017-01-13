@@ -1,4 +1,4 @@
-# Redaxios (or Axios-Isomorphic-Push)
+# Axios-Isomorphic-Push
 
 Improve the performance of your isomorphic React websites by pushing API responses to the client before they even request them.
 
@@ -13,7 +13,7 @@ Use the [spdy library](https://github.com/indutny/node-spdy), which supports HTT
 ```js
 import * as spdy from 'spdy';
 import thunk from 'redux-thunk'
-import prepareAxios from '@bernzsed/redaxios'
+import prepareAxios from '@bernzsed/axios-isomorpic-push'
 
 const options = {
   key: fs.readFileSync('./server.key'),
@@ -27,7 +27,7 @@ app.use((request, response) => {
   const axios = prepareAxios(response);
   const reducer = combineReducers(reducers);
   const store = createStore(reducer, applyMiddleware(thunk.withExtraArgument(axios)));
-  
+
 	// [...] more react stuff here
 }
 ```
