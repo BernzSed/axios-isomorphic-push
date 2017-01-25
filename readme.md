@@ -6,7 +6,7 @@ Improve the performance of your isomorphic React websites by pushing API respons
 
 Create an isomorphic React website with Redux.
 
-In this example, componentDidMount() runs twice; once on the client and once on the server.
+In this example, componentWillMount() runs twice; once on the client and once on the server.
 
 Use the [spdy library](https://github.com/indutny/node-spdy), which supports HTTP/2 and is compatible with express.
 
@@ -45,11 +45,11 @@ export function getThing(id) {
 }
 ```
 
-Call the action from inside componentDidMount, as usual:
+Call the action from inside componentWillMount, as usual:
 
 ```js
 class MyComponent extends Component {
-  componentDidMount() {
+  componentWillMount() {
     this.props.dispatch(
       getThing(this.props.thingId)
     );
