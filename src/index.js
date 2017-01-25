@@ -14,6 +14,30 @@ function canPush(requestUrl, config) {
 //    instead just make requests as normal (for pre-rendering the html)
 //    or ignore all requests (for after the response has been sent).
 
+// for request that contain no data (GET, HEAD, DELETE)
+function getRequestConfigWithoutData(method, [arg1, arg2]) {
+  if (typeof arg1 === 'string') {
+    const config = Object.assign({}, arg2);
+    config.url = arg1;
+    config.method = method || config.method || 'GET';
+    return config;
+  } else {
+    return arg1;
+  }
+}
+// for requests that contain data (POST, PUT)
+function getRequestConfigWithData(method, [arg1, arg2, arg3]) {
+  if (typeof arg1 === 'string') {
+    const config = Object.assign({}, arg3);
+    config.url = arg1;
+    config.method = method || config.method || 'POST';
+    return config;
+  } else {
+    return arg2 || arg1;
+  }
+}
+
+
 /**
  * Wraps axios in something that will monitor requests/responses and
  * will issue push requests
@@ -32,8 +56,10 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
   }
 
 
-  // https://github.com/mzabriskie/axios/#interceptors
-  targetAxios.interceptors.request.use(function requestInterceptor(config) {
+  function interceptRequest(params, expectedMethod, hasData) {
+    const config = hasData ?
+      getRequestConfigWithData(expectedMethod, params) :
+      getRequestConfigWithoutData(expectedMethod, params);
 
     const requestUrl = url.parse(config.url);
 
@@ -43,6 +69,7 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       const requestHeaders = Object.assign({}, config.headers, {
         ':authority': requestUrl.host
       }); // TODO exclude unneeded headers like user-agent
+      // TODO actual reference to spdy/http2 modules should be in a wrapper for those libraries
       const pushStream = pageResponse.push(requestUrl.path, {
         method: config.method,
         request: requestHeaders
@@ -55,13 +82,14 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       const newConfig = Object.assign({}, config, {
         isomorphicPushStream: pushStream
       });
-      return newConfig;
+      return targetAxios.request(newConfig);
     } else {
-      // return an empty promise
+      // return an empty promise instead of making the call from the server side
       return new Promise(() => {});
     }
+  }
 
-  });
+  // https://github.com/mzabriskie/axios/#interceptors
   // undocumented axios feature: use() takes second argument to handle errors
   targetAxios.interceptors.response.use(function responseInterceptor(response) {
     // response = { status, statusText, headers, config, request, data }
@@ -83,6 +111,30 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
     // TODO response failed; cancel the push_promise
   });
 
+  function axiosWrapper(...params) {
+    return interceptRequest(params, null, false);
+  }
 
-  return targetAxios;
+  axiosWrapper.request = (...params) =>
+    interceptRequest(params, null, false);
+  axiosWrapper.get = (...params) =>
+    interceptRequest(params, 'get', false);
+  axiosWrapper.delete = (...params) =>
+    interceptRequest(params, 'delete', false);
+  axiosWrapper.head = (...params) =>
+    interceptRequest(params, 'head', false);
+  axiosWrapper.post = (...params) =>
+    interceptRequest(params, 'post', true);
+  axiosWrapper.put = (...params) =>
+    interceptRequest(params, 'put', true);
+  axiosWrapper.patch = (...params) =>
+    interceptRequest(params, 'patch', true);
+
+  // others
+  axiosWrapper.all = targetAxios.all;
+  axiosWrapper.spread = targetAxios.spread;
+
+  axiosWrapper.targetAxios = targetAxios;
+
+  return axiosWrapper;
 }
