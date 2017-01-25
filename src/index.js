@@ -70,13 +70,13 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
         ':authority': requestUrl.host
       }); // TODO exclude unneeded headers like user-agent
       // TODO actual reference to spdy/http2 modules should be in a wrapper for those libraries
-      const pushStream = pageResponse.push(requestUrl.path, {
+      const pushStream = pageResponse && pageResponse.push(requestUrl.path, {
         method: config.method,
         request: requestHeaders
       }, function pushCallback(err, duplexStream) {
         // TODO cancel request if something went wrong.
       });
-      pushStream.on('error', function onPushError() {
+      pushStream && pushStream.on('error', function onPushError() {
         // TODO cancel request if something went wrong.
       });
       const newConfig = Object.assign({}, config, {
