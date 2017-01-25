@@ -85,7 +85,9 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       return targetAxios.request(newConfig);
     } else {
       // return an empty promise instead of making the call from the server side
-      return new Promise(() => {});
+      const emptyPromise = new Promise(() => {});
+      emptyPromise.empty = true;
+      return emptyPromise;
     }
   }
 
