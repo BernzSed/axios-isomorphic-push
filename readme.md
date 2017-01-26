@@ -11,7 +11,7 @@ In this example, componentWillMount() runs twice; once on the client and once on
 Use the [spdy library](https://github.com/indutny/node-spdy), which supports HTTP/2 and is compatible with express.
 
 ```js
-import * as spdy from 'spdy';
+import spdy from 'spdy';
 import thunk from 'redux-thunk'
 import prepareAxios from 'axios-isomorphic-push'
 
