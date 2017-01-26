@@ -50,7 +50,7 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       axiosInstance && axiosInstance.create && axiosInstance.create()
     ) || axiosInstance || axios.create();
 
-  if (global.window) {
+  if (global.window || !pageResponse) {
     // don't wrap it if on client side
     return targetAxios;
   }
@@ -70,7 +70,7 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
         ':authority': requestUrl.host
       }); // TODO exclude unneeded headers like user-agent
       // TODO actual reference to spdy/http2 modules should be in a wrapper for those libraries
-      const pushStream = pageResponse && pageResponse.push(requestUrl.path, {
+      const pushStream = pageResponse.push && pageResponse.push(requestUrl.path, {
         method: config.method,
         request: requestHeaders
       }, function pushCallback(err, duplexStream) {

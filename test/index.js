@@ -3,6 +3,7 @@ import prepareAxios from '../src';
 
 describe('When making requests', () => {
   let mockAxios;
+  let mockPageRequest;
 
   beforeEach(() => {
     mockAxios = function mockAxiosFn() {};
@@ -21,6 +22,10 @@ describe('When making requests', () => {
         }
       }
     };
+
+    mockPageRequest = {
+      push(path, pushOptions) {}
+    };
   });
 
   it('calls axios.request() with the right url', () => {
@@ -31,7 +36,7 @@ describe('When making requests', () => {
       oldRequest(config);
     };
 
-    const wrappedAxios = prepareAxios(null, mockAxios);
+    const wrappedAxios = prepareAxios(mockPageRequest, mockAxios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(requestConfig.url, 'http://www.example.com/api/foo');
@@ -39,13 +44,11 @@ describe('When making requests', () => {
 
   it('makes a push promise', () => {
     let pushedPath;
-    const pageRequest = {
-      push(path, pushOptions) {
-        pushedPath = path;
-      }
+    mockPageRequest.push = (path, pushOptions) => {
+      pushedPath = path;
     };
 
-    const wrappedAxios = prepareAxios(pageRequest, mockAxios);
+    const wrappedAxios = prepareAxios(mockPageRequest, mockAxios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(pushedPath, '/api/foo');
