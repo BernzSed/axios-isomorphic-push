@@ -135,6 +135,8 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
   // others
   axiosWrapper.all = targetAxios.all;
   axiosWrapper.spread = targetAxios.spread;
+  axiosWrapper.interceptors = targetAxios.interceptors;
+  axiosWrapper.defaults = targetAxios.defaults;
 
   axiosWrapper.targetAxios = targetAxios;
 
