@@ -32,7 +32,7 @@ app.use((request, response) => {
 }
 ```
 
-In your redux action action:
+In your redux action:
 
 ```js
 export function getThing(id) {
