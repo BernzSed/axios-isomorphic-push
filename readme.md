@@ -6,14 +6,14 @@ Improve the performance of your isomorphic React websites by pushing API respons
 
 Create an isomorphic React website with Redux.
 
-In this example, componentWillMount() runs twice; once on the client and once on the server.
+In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed resource instead.
 
 Use the [spdy library](https://github.com/indutny/node-spdy), which supports HTTP/2 and is compatible with express.
 
 ```js
 import * as spdy from 'spdy';
 import thunk from 'redux-thunk'
-import prepareAxios from '@bernzsed/axios-isomorpic-push'
+import prepareAxios from 'axios-isomorphic-push'
 
 const options = {
   key: fs.readFileSync('./server.key'),
