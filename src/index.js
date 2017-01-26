@@ -108,8 +108,8 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
     }
     return response;
   }, function responseRejectedInterceptor(error) {
-    // error = { code, errno, syscall, hostname, host, port, config, response }
-    const config = error.config;
+    // { code, errno, syscall, hostname, host, port, config, response } = error
+    // const config = error.config;
     // TODO response failed; cancel the push_promise
   });
 
