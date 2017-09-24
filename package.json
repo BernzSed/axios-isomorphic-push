@@ -21,8 +21,8 @@
     "isomorphic"
   ],
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/BernzSed/axios-isomorphic-push.git"
+    "type": "git",
+    "url": "https://github.com/BernzSed/axios-isomorphic-push.git"
   },
   "homepage": "https://github.com/BernzSed/axios-isomorphic-push",
   "bugs": {
