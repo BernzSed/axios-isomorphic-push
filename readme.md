@@ -11,13 +11,6 @@ By running client-side code on the server first, we can find out exactly what AP
 Push promises are a feature of HTTP/2. When requesting a webpage, the server can also promise to send other related files (like css, js, images, or even api calls) soon after, so the client doesn't have to request them.  
 [More info](https://en.wikipedia.org/wiki/HTTP/2_Server_Push)
 
-## TODO
-- **IMPORTANT!** Use Node.js's new 'http2' module instead of 'spdy'.
-- Use FetchObserver and stream.write() to write data as it comes. (Or better yet, Stream readable.pipe(destination) )
-- If possible, instead of returning empty promises, fulfill promises on the server side and issue push_promises for any follow-up api calls that are made.
-- Create an example project and link to it from this readme.
-- Write example code that uses React context, for websites that don't use Redux.
-
 ## Example:
 
 Create an isomorphic React website.
@@ -82,11 +75,14 @@ While browsers do accept push promises of static resources from domains that sha
 
 The http2 spec does allow for this, however, so long as both domains use the same security certificate. Hopefully browser behavior will soon change to match the spec.
 
-#### What this means:
+##### What this means:
 
-If your website is at `www.example.com`, today's browsers won't accept push promises from `api.example.com`.
+If your website is at `www.example.com`, today's browsers won't accept push promises for `api.example.com`.
 
-#### The simple workaround:
+##### The simple workaround:
 
 Simply use `www.example.com/api`.  
 If your api is at `api.example.com`, forward requests from `www.example.com/api/<stuff>` to `api.example.com/<stuff>`. (Do this on the server side, NOT by using 3xx redirects.)
+
+### Node version
+This will work with Node.js v9, and currently works with Node.js v8.5.0 or greater with the `--enable-http2` flag.

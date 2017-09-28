@@ -1,10 +1,35 @@
 import axios from 'axios';
 import url from 'url';
+import omit from 'object.omit';
+import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
+import combineURLs from 'axios/lib/helpers/combineURLs';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
+// these are from isIllegalConnectionSpecificHeader(),
+//  in nodejs /lib/internal/http2/util.js
+const illegalConnectionSpecificHeaders = [
+  // http2.constants.HTTP2_HEADER_CONNECTION,
+  // http2.constants.HTTP2_HEADER_UPGRADE,
+  // http2.constants.HTTP2_HEADER_HOST,
+  // http2.constants.HTTP2_HEADER_HTTP2_SETTINGS,
+  // http2.constants.HTTP2_HEADER_KEEP_ALIVE,
+  // http2.constants.HTTP2_HEADER_PROXY_CONNECTION,
+  // http2.constants.HTTP2_HEADER_TRANSFER_ENCODING,
+  // http2.constants.HTTP2_HEADER_TE
+  'connection',
+  'upgrade',
+  'host',
+  'http2-settings',
+  'keep-alive',
+  'proxy-connection',
+  'transfer-encoding',
+  'te' // TODO that's not illegal for trailers. Does piping the stream like I did send trailers? Need to test that.
+]; // TODO should probably move that to its own file
+
 function canPush(requestUrl, config) {
   // TODO make sure page request was made in http/2
+  // TODO res.stream.pushAllowed
   return pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
   // TODO don't push the same thing multiple times
@@ -37,18 +62,29 @@ function getRequestConfigWithData(method, [arg1, arg2, arg3]) {
   }
 }
 
+function getTargetAxios(axiosParam) {
+  if (axiosParam && axiosParam.create) {
+    // axiosParam is the global axios instance.
+    return axiosParam.create();
+  } else if (typeof axiosParam === 'function' && axiosParam.get) {
+    // axiosParam is already an instance of axios.
+    return axiosParam;
+  } else {
+    // axiosParam is either null or a config object.
+    return axios.create(axiosParam);
+  }
+}
+
 
 /**
  * Wraps axios in something that will monitor requests/responses and
- * will issue push requests
- * @param {pageResponse} The response from the currently running server.
- * @param {axiosInstance} instance of axios to wrap
- * @return {object} return an axios instance that will issue push requests automatically.
+ * will issue push promises
+ * @param {pageResponse} http2.Http2ServerResponse
+ * @param {axiosParam} (optional) instance of axios, or axios config object
+ * @return {object} returns an axios instance that will issue push promises automatically.
  */
-export default function prepareAxios(pageResponse, axiosInstance = null) {
-  const targetAxios = (
-      axiosInstance && axiosInstance.create && axiosInstance.create()
-    ) || axiosInstance || axios.create();
+export default function prepareAxios(pageResponse, axiosParam = null) {
+  const targetAxios = getTargetAxios(axiosParam);
 
   if (global.window || !pageResponse) {
     // don't wrap it if on client side
@@ -61,56 +97,85 @@ export default function prepareAxios(pageResponse, axiosInstance = null) {
       getRequestConfigWithData(expectedMethod, params) :
       getRequestConfigWithoutData(expectedMethod, params);
 
-    const requestUrl = url.parse(config.url);
+    const baseURL = targetAxios.defaults.baseURL || config.baseURL;
+    const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
+      combineURLs(baseURL, config.url) :
+      config.url;
+    const requestUrl = url.parse(requestURLString);
 
     if (canPush(requestUrl, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
-      const requestHeaders = Object.assign({}, config.headers, {
-        ':authority': requestUrl.host
-      }); // TODO exclude unneeded headers like user-agent
-      // TODO actual reference to spdy/http2 modules should be in a wrapper for those libraries
-      const pushStream = pageResponse.push && pageResponse.push(requestUrl.path, {
-        method: config.method,
-        request: requestHeaders
-      }, function pushCallback(err, duplexStream) {
-        // TODO cancel request if something went wrong.
+      const requestHeaders = {
+        ...config.headers,
+        ':path': requestUrl.path,
+        ':authority': requestUrl.host,
+        ':method': config.method.toUpperCase(),
+        ':scheme': url.protocol ? /\w+/.exec(url.protocol) : 'https'
+      }; // TODO exclude unneeded headers like user-agent
+
+      const pushResponsePromise = new Promise((resolve, reject) => {
+        pageResponse.createPushResponse(
+          requestHeaders,
+          (err, pushResponse) => {
+            // Node docs don't mention these params. Bad Node. No cookie for you.
+            if (err) {
+              reject(err);
+            } else {
+              resolve(pushResponse);
+            }
+          }
+        );
       });
-      pushStream && pushStream.on('error', function onPushError() {
-        // TODO cancel request if something went wrong.
-      });
-      const newConfig = Object.assign({}, config, {
-        isomorphicPushStream: pushStream
-      });
-      return targetAxios.request(newConfig);
-    } else {
-      // return an empty promise instead of making the call from the server side
-      const emptyPromise = new Promise(() => {});
-      emptyPromise.empty = true;
-      return emptyPromise;
+
+      const newConfig = {
+        ...config,
+        responseType: 'stream',
+        pushResponsePromise
+      };
+
+      targetAxios.request(newConfig);
+      // TODO should the resulting promise be returned?
+      //  Currently, I can't, because data is always a stream,
+      //  but returning it could be useful for pushing any follow-up api calls
     }
+    // return an empty promise that never resolves.
+    const emptyPromise = new Promise(() => {});
+    emptyPromise.empty = true;
+    return emptyPromise;
   }
 
-  // https://github.com/mzabriskie/axios/#interceptors
-  // undocumented axios feature: use() takes second argument to handle errors
+  // TODO FIXME if an instance of axios was passed in, this adds a new
+  //    interceptor each time. Which is bad.
   targetAxios.interceptors.response.use(function responseInterceptor(response) {
     // response = { status, statusText, headers, config, request, data }
     // response.config = { adapter, transformRequest, transformResponse,
     //    timeout, xsrfCookieName, xsrfHeaderName, maxContentLength,
     //    validateStatus, headers, method, url, data }
-    const config = response.config;
-    if (config.isomorphicPushStream) {
-      // TODO response headers and status code
-      // sendHeaders(response.headers, callback) // nope, that doesn't work...
-      // Looks like spdy sends the headers & status code immediately:
-      // https://github.com/indutny/spdy-transport/blob/0bc70336508388ff5d111fd5027d3c31a56c7875/lib/spdy-transport/protocol/http2/framer.js#L344
-      config.isomorphicPushStream.end(response.data);
+    const { config } = response;
+
+    if (config.pushResponsePromise) {
+      config.pushResponsePromise.then((pushResponse) => {
+        const headers = omit(response.headers, illegalConnectionSpecificHeaders);
+        // TODO that should be case-insensitive (use filter-values)
+        // TODO do I need to convert Content-Length header from string to int?
+
+        pushResponse.writeHead(response.status, headers);
+        response.data.pipe(pushResponse);
+      });
     }
     return response;
   }, function responseRejectedInterceptor(error) {
     // { code, errno, syscall, hostname, host, port, config, response } = error
-    // const config = error.config;
-    // TODO response failed; cancel the push_promise
+    const { config, code } = error;
+    if (config.pushResponsePromise) {
+      config.pushResponsePromise.then((pushResponse) => {
+        pushResponse.stream.destroy(code);
+        // TODO Actually respond with the error response, if possible?
+        // TODO avoid duplicating code between responseInterceptor and responseRejectedInterceptor
+      });
+    }
+    return Promise.reject(error);
   });
 
   function axiosWrapper(...params) {

@@ -3,11 +3,17 @@ import prepareAxios from '../src';
 
 describe('When making requests', () => {
   let mockAxios;
-  let mockPageRequest;
+  let mockServerResponse;
 
   beforeEach(() => {
     mockAxios = function mockAxiosFn() {};
-    mockAxios.request = function mockRequest(config) {};
+    mockAxios.request = () => {};
+    mockAxios.get = () => {};
+    mockAxios.post = () => {};
+    mockAxios.put = () => {};
+    mockAxios.patch = () => {};
+    mockAxios.delete = () => {};
+    mockAxios.head = () => {};
     mockAxios.interceptors = {
       response: {
         fulfilled: [],
@@ -22,10 +28,17 @@ describe('When making requests', () => {
         }
       }
     };
+    mockAxios.defaults = {};
 
-    mockPageRequest = {
-      push(path, pushOptions) {}
+    mockServerResponse = {
+      createPushResponse(headers, callback) {
+        return Promise.resolve(mockServerResponse);
+      },
+      stream: {
+        pushAllowed: true
+      }
     };
+
   });
 
   it('calls axios.request() with the right url', () => {
@@ -36,7 +49,7 @@ describe('When making requests', () => {
       oldRequest(config);
     };
 
-    const wrappedAxios = prepareAxios(mockPageRequest, mockAxios);
+    const wrappedAxios = prepareAxios(mockServerResponse, mockAxios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(requestConfig.url, 'http://www.example.com/api/foo');
@@ -44,11 +57,11 @@ describe('When making requests', () => {
 
   it('makes a push promise', () => {
     let pushedPath;
-    mockPageRequest.push = (path, pushOptions) => {
-      pushedPath = path;
+    mockServerResponse.createPushResponse = (headers, callback) => {
+      pushedPath = headers[':path'];
     };
 
-    const wrappedAxios = prepareAxios(mockPageRequest, mockAxios);
+    const wrappedAxios = prepareAxios(mockServerResponse, mockAxios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(pushedPath, '/api/foo');
