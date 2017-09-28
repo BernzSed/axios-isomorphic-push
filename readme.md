@@ -83,5 +83,7 @@ If your website is at `www.example.com`, today's browsers won't accept push prom
 Simply use `www.example.com/api`.  
 If your api is at `api.example.com`, forward requests from `www.example.com/api/<stuff>` to `api.example.com/<stuff>`. (Do this on the server side, NOT by using 3xx redirects.)
 
-### Node version
-This will work with Node.js v9, and currently works with Node.js v8.5.0 or greater with the `--enable-http2` flag.
+### Notes
+ - To test this on localhost, you may have to set `process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"` so node will connect to your own local server via TLS. *DO NOT DO THIS IN PRODUCTION.*
+
+ - This will work with Node.js v9, and currently works with Node.js v8.5.0 or greater with the `--enable-http2` flag.
