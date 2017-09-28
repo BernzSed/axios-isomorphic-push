@@ -1,6 +1,6 @@
 # Axios-Isomorphic-Push
 
-Improve the performance of your isomorphic websites by pushing API responses to the client before they even request them.
+A wrapper around Axios that will improve the performance of your isomorphic websites by pushing API responses to the client.
 
 ### About isomorphic websites:
 Isomorphic websites run on both the server and client, doing much of the initial work on the server side so the user doesn’t have to wait for multiple request/response round-trips.
@@ -15,12 +15,10 @@ Push promises are a feature of HTTP/2. When requesting a webpage, the server can
 
 Create an isomorphic React website.
 
-In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed resource instead.
-
-Use the [spdy library](https://github.com/indutny/node-spdy), which supports HTTP/2 and is compatible with express.
+In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed data instead.
 
 ```js
-import spdy from 'spdy';
+import http2 from 'http2';
 import thunk from 'redux-thunk'
 import prepareAxios from 'axios-isomorphic-push'
 
@@ -30,7 +28,7 @@ const options = {
 };
 const app = express();
 
-const server = spdy.createServer(options, app);
+const server = http2.createSecureServer(options, app);
 
 app.use((request, response) => {
   const axios = prepareAxios(response);
@@ -44,7 +42,7 @@ app.use((request, response) => {
 If using Redux, you can use redux-thunk's `withExtraArgument` function.
 
 ```js
-export function getThing (id) {
+export function getThing(id) {
   return (dispatch, getState, axios) => {
     axios.get('/api/things/' + id).then(
       (thing) => dispatch(putThingInStore(thing)),
