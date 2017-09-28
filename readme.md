@@ -24,7 +24,8 @@ import prepareAxios from 'axios-isomorphic-push'
 
 const options = {
   key: fs.readFileSync('./server.key'),
-  cert: fs.readFileSync('./server.crt')
+  cert: fs.readFileSync('./server.crt'),
+  allowHTTP1: true
 };
 const app = express();
 
