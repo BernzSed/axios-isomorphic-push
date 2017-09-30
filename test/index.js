@@ -1,55 +1,50 @@
-import { assert } from 'chai';
+import chai, { assert, expect } from 'chai';
+import sinonChai from 'sinon-chai';
+import sinon from 'sinon';
 import prepareAxios from '../src';
+import { mockAxios, mockServerResponse } from './mocks';
+
+chai.use(sinonChai);
+
+
+describe('Interceptors', () => {
+  let axios;
+  beforeEach(() => {
+    axios = mockAxios();
+  });
+
+  it('adds an interceptor', () => {
+    prepareAxios(mockServerResponse(), axios);
+    assert.equal(axios.interceptors.response.fulfilled.length, 1);
+  });
+
+  it('doesn\'t add duplicate interceptors', () => {
+    axios.interceptors.response.use = sinon.spy();
+    prepareAxios(mockServerResponse(), axios);
+    prepareAxios(mockServerResponse(), axios);
+    // assert.fail()
+    expect(axios.interceptors.response.use).to.have.been.calledOnce;
+  });
+});
 
 describe('When making requests', () => {
-  let mockAxios;
-  let mockServerResponse;
+  let axios;
+  let pageResponse;
 
   beforeEach(() => {
-    mockAxios = function mockAxiosFn() {};
-    mockAxios.request = () => {};
-    mockAxios.get = () => {};
-    mockAxios.post = () => {};
-    mockAxios.put = () => {};
-    mockAxios.patch = () => {};
-    mockAxios.delete = () => {};
-    mockAxios.head = () => {};
-    mockAxios.interceptors = {
-      response: {
-        fulfilled: [],
-        rejected: [],
-        use: (fulfilled, rejected) => {
-          if (fulfilled) {
-            mockAxios.interceptors.response.fulfilled.push(fulfilled);
-          }
-          if (rejected) {
-            mockAxios.interceptors.response.rejected.push(rejected);
-          }
-        }
-      }
-    };
-    mockAxios.defaults = {};
-
-    mockServerResponse = {
-      createPushResponse(headers, callback) {
-        return Promise.resolve(mockServerResponse);
-      },
-      stream: {
-        pushAllowed: true
-      }
-    };
-
+    axios = mockAxios();
+    pageResponse = mockServerResponse();
   });
 
   it('calls axios.request() with the right url', () => {
     let requestConfig = null;
-    const oldRequest = mockAxios.request;
-    mockAxios.request = function mockRequest(config) {
+    const oldRequest = axios.request;
+    axios.request = function mockRequest(config) {
       requestConfig = config;
       oldRequest(config);
     };
 
-    const wrappedAxios = prepareAxios(mockServerResponse, mockAxios);
+    const wrappedAxios = prepareAxios(pageResponse, axios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(requestConfig.url, 'http://www.example.com/api/foo');
@@ -57,11 +52,11 @@ describe('When making requests', () => {
 
   it('makes a push promise', () => {
     let pushedPath;
-    mockServerResponse.createPushResponse = (headers, callback) => {
+    pageResponse.createPushResponse = (headers, callback) => {
       pushedPath = headers[':path'];
     };
 
-    const wrappedAxios = prepareAxios(mockServerResponse, mockAxios);
+    const wrappedAxios = prepareAxios(pageResponse, axios);
     wrappedAxios.get('http://www.example.com/api/foo');
 
     assert.equal(pushedPath, '/api/foo');

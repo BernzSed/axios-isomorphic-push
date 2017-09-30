@@ -48,7 +48,9 @@
     "eslint-plugin-import": "^2.7.0",
     "istanbul": "^0.4.5",
     "mocha": "^3.5.3",
-    "rimraf": "^2.6.2"
+    "rimraf": "^2.6.2",
+    "sinon": "^4.0.0",
+    "sinon-chai": "^2.13.0"
   },
   "scripts": {
     "clean": "rimraf lib",

@@ -75,6 +75,10 @@ function getTargetAxios(axiosParam) {
   }
 }
 
+function getWord(str) {
+  const result = /\w+/.exec(str);
+  return result ? result[0] : null;
+}
 
 /**
  * Wraps axios in something that will monitor requests/responses and
@@ -92,10 +96,10 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   }
 
 
-  function interceptRequest(params, expectedMethod, hasData) {
+  function interceptRequest(params, method, hasData) {
     const config = hasData ?
-      getRequestConfigWithData(expectedMethod, params) :
-      getRequestConfigWithoutData(expectedMethod, params);
+      getRequestConfigWithData(method, params) :
+      getRequestConfigWithoutData(method, params);
 
     const baseURL = targetAxios.defaults.baseURL || config.baseURL;
     const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
@@ -111,7 +115,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         ':path': requestUrl.path,
         ':authority': requestUrl.host,
         ':method': config.method.toUpperCase(),
-        ':scheme': url.protocol ? /\w+/.exec(url.protocol) : 'https'
+        ':scheme': getWord(url.protocol) || 'https'
       }; // TODO exclude unneeded headers like user-agent
 
       const pushResponsePromise = new Promise((resolve, reject) => {
@@ -145,38 +149,13 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     return emptyPromise;
   }
 
-  // TODO FIXME if an instance of axios was passed in, this adds a new
-  //    interceptor each time. Which is bad.
-  targetAxios.interceptors.response.use(function responseInterceptor(response) {
-    // response = { status, statusText, headers, config, request, data }
-    // response.config = { adapter, transformRequest, transformResponse,
-    //    timeout, xsrfCookieName, xsrfHeaderName, maxContentLength,
-    //    validateStatus, headers, method, url, data }
-    const { config } = response;
-
-    if (config.pushResponsePromise) {
-      config.pushResponsePromise.then((pushResponse) => {
-        const headers = omit(response.headers, illegalConnectionSpecificHeaders);
-        // TODO that should be case-insensitive (use filter-values)
-        // TODO do I need to convert Content-Length header from string to int?
-
-        pushResponse.writeHead(response.status, headers);
-        response.data.pipe(pushResponse);
-      });
-    }
-    return response;
-  }, function responseRejectedInterceptor(error) {
-    // { code, errno, syscall, hostname, host, port, config, response } = error
-    const { config, code } = error;
-    if (config.pushResponsePromise) {
-      config.pushResponsePromise.then((pushResponse) => {
-        pushResponse.stream.destroy(code);
-        // TODO Actually respond with the error response, if possible?
-        // TODO avoid duplicating code between responseInterceptor and responseRejectedInterceptor
-      });
-    }
-    return Promise.reject(error);
-  });
+  if (!targetAxios.usingIsomorphicPushInterceptors) {
+    targetAxios.interceptors.response.use(
+      responseInterceptor,
+      responseRejectedInterceptor
+    );
+    targetAxios.usingIsomorphicPushInterceptors = true;
+  }
 
   function axiosWrapper(...params) {
     return interceptRequest(params, null, false);
@@ -206,4 +185,37 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   axiosWrapper.targetAxios = targetAxios;
 
   return axiosWrapper;
+}
+
+function responseInterceptor(response) {
+  // response = { status, statusText, headers, config, request, data }
+  // response.config = { adapter, transformRequest, transformResponse,
+  //    timeout, xsrfCookieName, xsrfHeaderName, maxContentLength,
+  //    validateStatus, headers, method, url, data }
+  const { config } = response;
+
+  if (config.pushResponsePromise) {
+    config.pushResponsePromise.then((pushResponse) => {
+      const headers = omit(response.headers, illegalConnectionSpecificHeaders);
+      // TODO that should be case-insensitive (use filter-values)
+      // TODO do I need to convert Content-Length header from string to int?
+
+      pushResponse.writeHead(response.status, headers);
+      response.data.pipe(pushResponse);
+    });
+  }
+  return response;
+}
+
+function responseRejectedInterceptor(error) {
+  // { code, errno, syscall, hostname, host, port, config, response } = error
+  const { config, code } = error;
+  if (config.pushResponsePromise) {
+    config.pushResponsePromise.then((pushResponse) => {
+      pushResponse.stream.destroy(code);
+      // TODO Actually respond with the error response, if possible?
+      // TODO avoid duplicating code between responseInterceptor and responseRejectedInterceptor
+    });
+  }
+  return Promise.reject(error);
 }
