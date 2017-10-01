@@ -8,12 +8,25 @@ Isomorphic websites run on both the server and client, doing much of the initial
 By running client-side code on the server first, we can find out exactly what API requests the client will make, and make those requests on the server first.
 
 ### About push promises:
-Push promises are a feature of HTTP/2. When requesting a webpage, the server can also promise to send other related files (like css, js, images, or even api calls) soon after, so the client doesn't have to request them.  
+Push promises are a feature of HTTP/2. When serving a webpage, the server can also promise to send other related files (like css, js, images, or even api calls), so the client doesn't have to request them.  
 [More info](https://en.wikipedia.org/wiki/HTTP/2_Server_Push)
+
+## Usage
+
+`import prepareAxios from 'axios-isomorphic-push'`.
+
+Call it just before server-side rendering. The function takes two arguments:
+
+`prepareAxios(response, [axios])`
+
+- `response` – [`<Http2ServerResponse>`](https://nodejs.org/api/http2.html#http2_class_http2_http2serverresponse) for the currently rendering webpage.
+- `axios` – (Optional) Either an instance of axios created by `axios.create()`, or a [config object](https://github.com/axios/axios#creating-an-instance) to pass into `axios.create()`.
+
+On the client side, simply use `axios.create()` instead.
 
 ## Example:
 
-Create an isomorphic React website.
+This is an example of an isomorphic React website.
 
 In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed data instead.
 
@@ -35,8 +48,8 @@ app.use((request, response) => {
   const axios = prepareAxios(response);
   const reducer = combineReducers(reducers);
   const store = createStore(reducer, applyMiddleware(thunk.withExtraArgument(axios)));
-
-	// [...] more react stuff here
+  
+  // [...] render and respond here
 }
 ```
 
