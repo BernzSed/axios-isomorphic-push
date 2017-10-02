@@ -1,3 +1,6 @@
+/* eslint-disable class-methods-use-this */
+import EventEmitter from 'events';
+
 export function mockAxios() {
   function axios() {}
   axios.request = () => {};
@@ -32,15 +35,19 @@ export function mockAxiosInterceptor() {
   return interceptor;
 }
 
-export function mockServerResponse() {
-  const serverResponse = {
-    createPushResponse(headers, callback) {},
-    stream: {
+export class MockServerResponse extends EventEmitter {
+  constructor() {
+    super();
+    this.stream = {
       pushAllowed: true
-    },
-    writeHead() {}
-  };
-  return serverResponse;
+    };
+  }
+  createPushResponse(headers, callback) {}
+  writeHead() {}
+}
+
+export function mockServerResponse() {
+  return new MockServerResponse();
 }
 
 export function mockAxiosResponse(data = null, headers = {}, config = null) {

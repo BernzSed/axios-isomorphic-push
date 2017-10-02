@@ -1,5 +1,6 @@
 import url from 'url';
 import omit from 'object.omit';
+import { CancelToken } from 'axios';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
 import getTargetAxios from './getTargetAxios';
@@ -104,6 +105,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         ':scheme': getWord(requestURL.protocol) || 'https'
       }; // TODO exclude unneeded headers like user-agent
 
+      const cancelSource = CancelToken.source();
+
       const pushResponsePromise = new Promise((resolve, reject) => {
         pageResponse.createPushResponse(
           requestHeaders,
@@ -112,6 +115,9 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
             if (err) {
               reject(err);
             } else {
+              pushResponse.on('close', () => {
+                cancelSource.cancel('Push stream closed');
+              });
               resolve(pushResponse);
             }
           }
@@ -121,6 +127,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const newConfig = {
         ...config,
         responseType: 'stream',
+        cancelToken: cancelSource.token,
         pushResponsePromise
       };
 
@@ -195,7 +202,7 @@ function responseInterceptor(response) {
 function responseRejectedInterceptor(error) {
   // { code, errno, syscall, hostname, host, port, config, response } = error
   const { config, code } = error;
-  if (config.pushResponsePromise) {
+  if (config && config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
       pushResponse.stream.destroy(code);
       // TODO Actually respond with the error response, if possible?

@@ -177,4 +177,17 @@ describe('When pushing a response', () => {
     };
     responseInterceptor(apiResponse);
   });
+
+  it('cancels the api request if the stream closes', () => {
+    pushResponse.emit('close');
+    assert.isOk(apiResponse.config.cancelToken.reason);
+  });
+
+  it('doesn’t cancel the ai request if everything is fine', (done) => {
+    apiResponse.data.pipe = function pipe(destination) {
+      assert.isNotOk(apiResponse.config.cancelToken.reason);
+      done();
+    };
+    responseInterceptor(apiResponse);
+  });
 });
