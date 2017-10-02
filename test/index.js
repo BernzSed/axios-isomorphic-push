@@ -156,15 +156,6 @@ describe('When pushing a response', () => {
     responseInterceptor(apiResponse);
   });
 
-  it.skip('converts Content-Length value into a number', (done) => {
-    // This is needed by http/2
-    pushResponse.writeHead = (status, headers) => {
-      assert(headers['Content-Length'] === 55);
-      done();
-    };
-    responseInterceptor(apiResponse);
-  });
-
   it('pipes the api response to the push response', (done) => {
     apiResponse.data.pipe = function pipe(destination) {
       assert.equal(destination, pushResponse);

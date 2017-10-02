@@ -197,7 +197,6 @@ function responseInterceptor(response) {
     config.pushResponsePromise.then((pushResponse) => {
       const headers = omit(response.headers, illegalConnectionSpecificHeaders);
       // TODO that should be case-insensitive (use filter-values)
-      // TODO do I need to convert Content-Length header from string to int?
 
       pushResponse.writeHead(response.status, headers);
       response.data.pipe(pushResponse);
