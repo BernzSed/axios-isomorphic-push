@@ -1,8 +1,8 @@
-import axios from 'axios';
 import url from 'url';
 import omit from 'object.omit';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
+import getTargetAxios from './getTargetAxios';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
@@ -58,19 +58,6 @@ function getRequestConfigWithData(method, [arg1, arg2, arg3]) {
     return config;
   } else {
     return arg2 || arg1;
-  }
-}
-
-function getTargetAxios(axiosParam) {
-  if (axiosParam && axiosParam.create) {
-    // axiosParam is the global axios instance.
-    return axiosParam.create();
-  } else if (typeof axiosParam === 'function' && axiosParam.get) {
-    // axiosParam is already an instance of axios.
-    return axiosParam;
-  } else {
-    // axiosParam is either null or a config object.
-    return axios.create(axiosParam);
   }
 }
 
