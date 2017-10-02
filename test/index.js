@@ -54,16 +54,30 @@ describe('When making requests', () => {
     assert.equal(requestConfig.url, 'http://www.example.com/api/foo');
   });
 
-  it('makes a push promise', () => {
-    let pushedPath;
-    pageResponse.createPushResponse = (headers, callback) => {
-      pushedPath = headers[':path'];
-    };
+  describe('and sending a push promise', () => {
+    let pushHeaders;
+    let wrappedAxios;
+    beforeEach(() => {
+      pageResponse.createPushResponse = (headers, callback) => {
+        pushHeaders = headers;
+      };
+      wrappedAxios = prepareAxios(pageResponse, axios);
+    });
 
-    const wrappedAxios = prepareAxios(pageResponse, axios);
-    wrappedAxios.get('http://www.example.com/api/foo');
+    it('makes a push promise with the right path', () => {
+      wrappedAxios.get('http://www.example.com/api/foo');
+      assert.equal(pushHeaders[':path'], '/api/foo');
+    });
 
-    assert.equal(pushedPath, '/api/foo');
+    it('defaults :scheme to https, when url is relative', () => {
+      wrappedAxios.get('/api/foo');
+      assert.equal(pushHeaders[':scheme'], 'https');
+    });
+
+    it('takes the scheme from the url', () => {
+      wrappedAxios.get('gopher://www.example.com/api/foo');
+      assert.equal(pushHeaders[':scheme'], 'gopher');
+    });
   });
 
   it('doesn’t request without an http2 stream', () => {

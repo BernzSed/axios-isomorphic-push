@@ -27,7 +27,7 @@ const illegalConnectionSpecificHeaders = [
   'te' // TODO that's not illegal for trailers. Does piping the stream like I did send trailers? Need to test that.
 ]; // TODO should probably move that to its own file
 
-function canPush(pageResponse, requestUrl, config) {
+function canPush(pageResponse, requestURL, config) {
   return pageResponse.stream && pageResponse.stream.pushAllowed &&
     pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
@@ -75,8 +75,8 @@ function getTargetAxios(axiosParam) {
 }
 
 function getWord(str) {
-  const result = /\w+/.exec(str);
-  return result ? result[0] : null;
+  const result = str && /\w+/.exec(str);
+  return result && result[0];
 }
 
 /**
@@ -104,17 +104,17 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
       combineURLs(baseURL, config.url) :
       config.url;
-    const requestUrl = url.parse(requestURLString);
+    const requestURL = url.parse(requestURLString);
 
-    if (canPush(pageResponse, requestUrl, config)) {
+    if (canPush(pageResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
       const requestHeaders = {
         ...config.headers,
-        ':path': requestUrl.path,
-        ':authority': requestUrl.host,
+        ':path': requestURL.path,
+        ':authority': requestURL.host,
         ':method': config.method.toUpperCase(),
-        ':scheme': getWord(url.protocol) || 'https'
+        ':scheme': getWord(requestURL.protocol) || 'https'
       }; // TODO exclude unneeded headers like user-agent
 
       const pushResponsePromise = new Promise((resolve, reject) => {
