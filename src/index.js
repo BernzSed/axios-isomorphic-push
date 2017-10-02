@@ -1,32 +1,11 @@
 import url from 'url';
-import omit from 'object.omit';
 import { CancelToken } from 'axios';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
 import getTargetAxios from './getTargetAxios';
+import filterResponseHeaders from './filterResponseHeaders';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
-
-// these are from isIllegalConnectionSpecificHeader(),
-//  in nodejs /lib/internal/http2/util.js
-const illegalConnectionSpecificHeaders = [
-  // http2.constants.HTTP2_HEADER_CONNECTION,
-  // http2.constants.HTTP2_HEADER_UPGRADE,
-  // http2.constants.HTTP2_HEADER_HOST,
-  // http2.constants.HTTP2_HEADER_HTTP2_SETTINGS,
-  // http2.constants.HTTP2_HEADER_KEEP_ALIVE,
-  // http2.constants.HTTP2_HEADER_PROXY_CONNECTION,
-  // http2.constants.HTTP2_HEADER_TRANSFER_ENCODING,
-  // http2.constants.HTTP2_HEADER_TE
-  'connection',
-  'upgrade',
-  'host',
-  'http2-settings',
-  'keep-alive',
-  'proxy-connection',
-  'transfer-encoding',
-  'te' // TODO that's not illegal for trailers. Does piping the stream like I did send trailers? Need to test that.
-]; // TODO should probably move that to its own file
 
 function canPush(pageResponse, requestURL, config) {
   return pageResponse.stream && pageResponse.stream.pushAllowed &&
@@ -189,8 +168,7 @@ function responseInterceptor(response) {
 
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
-      const headers = omit(response.headers, illegalConnectionSpecificHeaders);
-      // TODO that should be case-insensitive (use filter-values)
+      const headers = filterResponseHeaders(response.headers);
 
       pushResponse.writeHead(response.status, headers);
       response.data.pipe(pushResponse);

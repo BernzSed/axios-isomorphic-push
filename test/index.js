@@ -162,7 +162,7 @@ describe('When pushing a response', () => {
     responseInterceptor(apiResponse);
   });
 
-  it.skip('excludes unwanted response headers', (done) => {
+  it('excludes unwanted response headers', (done) => {
     pushResponse.writeHead = (status, headers) => {
       assert.isUndefined(headers.Connection);
       done();
