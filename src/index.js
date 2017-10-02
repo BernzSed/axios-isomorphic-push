@@ -27,10 +27,9 @@ const illegalConnectionSpecificHeaders = [
   'te' // TODO that's not illegal for trailers. Does piping the stream like I did send trailers? Need to test that.
 ]; // TODO should probably move that to its own file
 
-function canPush(requestUrl, config) {
-  // TODO make sure page request was made in http/2
-  // TODO res.stream.pushAllowed
-  return pushableMethods.includes(config.method.toUpperCase());
+function canPush(pageResponse, requestUrl, config) {
+  return pageResponse.stream && pageResponse.stream.pushAllowed &&
+    pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
   // TODO don't push the same thing multiple times
 }
@@ -42,7 +41,7 @@ function canPush(requestUrl, config) {
 // for request that contain no data (GET, HEAD, DELETE)
 function getRequestConfigWithoutData(method, [arg1, arg2]) {
   if (typeof arg1 === 'string') {
-    const config = Object.assign({}, arg2);
+    const config = { ...arg2 };
     config.url = arg1;
     config.method = method || config.method || 'GET';
     return config;
@@ -53,7 +52,7 @@ function getRequestConfigWithoutData(method, [arg1, arg2]) {
 // for requests that contain data (POST, PUT)
 function getRequestConfigWithData(method, [arg1, arg2, arg3]) {
   if (typeof arg1 === 'string') {
-    const config = Object.assign({}, arg3);
+    const config = { ...arg3 };
     config.url = arg1;
     config.method = method || config.method || 'POST';
     return config;
@@ -107,7 +106,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       config.url;
     const requestUrl = url.parse(requestURLString);
 
-    if (canPush(requestUrl, config)) {
+    if (canPush(pageResponse, requestUrl, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
       const requestHeaders = {

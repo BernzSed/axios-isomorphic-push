@@ -65,6 +65,29 @@ describe('When making requests', () => {
 
     assert.equal(pushedPath, '/api/foo');
   });
+
+  it('doesn’t request without an http2 stream', () => {
+    delete pageResponse.stream;
+    axios.request = sinon.spy();
+    const wrappedAxios = prepareAxios(pageResponse, axios);
+    wrappedAxios('/api/foo');
+    expect(axios.request).to.have.not.been.called;
+  });
+
+  it('doesn’t request when the stream can’t push', () => {
+    pageResponse.stream.pushAllowed = false;
+    axios.request = sinon.spy();
+    const wrappedAxios = prepareAxios(pageResponse, axios);
+    wrappedAxios('/api/foo');
+    expect(axios.request).to.have.not.been.called;
+  });
+
+  it('doesn’t request with a POST', () => {
+    axios.request = sinon.spy();
+    const wrappedAxios = prepareAxios(pageResponse, axios);
+    wrappedAxios.post('/api/foo', 'blahblahblah');
+    expect(axios.request).to.have.not.been.called;
+  });
 });
 
 describe('When pushing a response', () => {
