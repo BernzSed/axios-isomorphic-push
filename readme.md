@@ -33,7 +33,8 @@ In this example, componentWillMount() runs twice; once on the client and once on
 ```js
 import http2 from 'http2';
 import thunk from 'redux-thunk'
-import prepareAxios from 'axios-isomorphic-push'
+import prepareAxios from 'axios-isomorphic-push';
+import express from 'express';
 
 const options = {
   key: fs.readFileSync('./server.key'),
@@ -81,6 +82,9 @@ class MyComponent extends Component {
 ### What if I'm not using redux?
 This is just one example. You could also place the axios instance in [React context](https://facebook.github.io/react/docs/context.html) instead.
 
+### Use in the browser
+When bundled by webpack for use in a browser, `prepareAxios()` simply calls `axios.create` and returns the instance. This will allow you to create the axios instance, for example, in next.js's `getInitialProps({ req, res })` (Though you should still make your api calls in `componentWillMount()` to make use of server push.)
+
 ## Caveats
 
 While browsers do accept push promises of static resources from domains that share the same security certificate, no major browser currently accepts push promises of XHR requests from a different domain.
@@ -97,6 +101,8 @@ Simply use `www.example.com/api`.
 If your api is at `api.example.com`, forward requests from `www.example.com/api/<stuff>` to `api.example.com/<stuff>`. (Do this on the server side, NOT by using 3xx redirects.)
 
 ### Notes
+ - If you add a request interceptor, it may break something. Instead, consider using [axios instance defaults](https://github.com/axios/axios#custom-instance-defaults) for things like auth headers.
+
  - To test this on localhost, you may have to set `process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"` so node will connect to your own local server via TLS. *DO NOT DO THIS IN PRODUCTION.*
 
  - This will work with Node.js v9, and currently works with Node.js v8.5.0 or greater with the `--enable-http2` flag.

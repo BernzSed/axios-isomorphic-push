@@ -112,6 +112,7 @@ describe('When pushing a response', () => {
   let createPushResponseCallback; // args: (error, pushResponse)
   let pushResponse;
   let responseInterceptor;
+  let responseRejectedInterceptor;
   let apiResponse;
 
   beforeEach(() => {
@@ -131,6 +132,7 @@ describe('When pushing a response', () => {
     createPushResponseCallback(null, pushResponse);
 
     [responseInterceptor] = axios.interceptors.response.fulfilled;
+    [responseRejectedInterceptor] = axios.interceptors.response.rejected;
 
     const headers = {
       'Content-Length': '55',
@@ -178,7 +180,7 @@ describe('When pushing a response', () => {
     responseInterceptor(apiResponse);
   });
 
-  it('cancels the api request if the stream closes', () => {
+  it('cancels the api request if the push stream closes', () => {
     pushResponse.emit('close');
     assert.isOk(apiResponse.config.cancelToken.reason);
   });
@@ -189,5 +191,40 @@ describe('When pushing a response', () => {
       done();
     };
     responseInterceptor(apiResponse);
+  });
+
+  describe('when the api has error', () => {
+    let error;
+    beforeEach(() => {
+      error = {
+        code: 234,
+        errno: 234,
+        syscall: null,
+        hostname: 'example.com',
+        host: 'example.com',
+        port: 80,
+        config: axiosRequestConfig,
+        response: apiResponse
+      };
+    });
+
+    it('responds with the error response status code', (done) => {
+      pushResponse.writeHead = (status, headers) => {
+        assert.equal(status, 502);
+        done();
+      };
+
+      apiResponse.status = 502;
+      responseRejectedInterceptor(error);
+    });
+
+    it('closes the stream if there was an error with no returnable response', (done) => {
+      pushResponse.stream.destroy = () => {
+        done();
+      };
+
+      error.response = null;
+      responseRejectedInterceptor(error);
+    });
   });
 });

@@ -39,7 +39,8 @@ export class MockServerResponse extends EventEmitter {
   constructor() {
     super();
     this.stream = {
-      pushAllowed: true
+      pushAllowed: true,
+      destroy() {}
     };
   }
   createPushResponse(headers, callback) {}

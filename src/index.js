@@ -159,6 +159,18 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   return axiosWrapper;
 }
 
+function sendResponse(pushResponse, apiResponse) {
+  const { status, data } = apiResponse;
+  const headers = filterResponseHeaders(apiResponse.headers);
+
+  pushResponse.writeHead(status, headers);
+  if (data && data.pipe) {
+    data.pipe(pushResponse);
+  } else {
+    pushResponse.end(data);
+  }
+}
+
 function responseInterceptor(response) {
   // response = { status, statusText, headers, config, request, data }
   // response.config = { adapter, transformRequest, transformResponse,
@@ -168,10 +180,7 @@ function responseInterceptor(response) {
 
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
-      const headers = filterResponseHeaders(response.headers);
-
-      pushResponse.writeHead(response.status, headers);
-      response.data.pipe(pushResponse);
+      sendResponse(pushResponse, response);
     });
   }
   return response;
@@ -179,12 +188,14 @@ function responseInterceptor(response) {
 
 function responseRejectedInterceptor(error) {
   // { code, errno, syscall, hostname, host, port, config, response } = error
-  const { config, code } = error;
+  const { config, code, response } = error;
   if (config && config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
-      pushResponse.stream.destroy(code);
-      // TODO Actually respond with the error response, if possible?
-      // TODO avoid duplicating code between responseInterceptor and responseRejectedInterceptor
+      if (response && response.data) {
+        sendResponse(pushResponse, response);
+      } else {
+        pushResponse.stream.destroy(code);
+      }
     });
   }
   return Promise.reject(error);
