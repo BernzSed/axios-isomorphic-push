@@ -61,6 +61,11 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     return targetAxios;
   }
 
+  // Unfortunately, we can't use a real request interceptor.
+  // Axios doesn't call its request interceptors immediately, so the
+  // page response stream could close before we have a chance to send
+  // the push promise.
+  // This is why we have to wrap axios instead of just adding interceptors.
 
   function interceptRequest(params, method, hasData) {
     const config = hasData ?
@@ -82,17 +87,17 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         ':authority': requestURL.host,
         ':method': config.method.toUpperCase(),
         ':scheme': getWord(requestURL.protocol) || 'https'
-      }; // TODO exclude unneeded headers like user-agent
+      };
 
       const cancelSource = CancelToken.source();
 
-      const pushResponsePromise = new Promise((resolve, reject) => {
+      const pushResponsePromise = new Promise((resolve) => {
         pageResponse.createPushResponse(
           requestHeaders,
           (err, pushResponse) => {
-            // Node docs don't mention these params. Bad Node. No cookie for you.
             if (err) {
-              reject(err);
+              // Can't reject the promise because nothing will catch() it.
+              cancelSource.cancel('Push promise failed');
             } else {
               pushResponse.on('close', () => {
                 cancelSource.cancel('Push stream closed');
@@ -110,10 +115,10 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         pushResponsePromise
       };
 
-      targetAxios.request(newConfig);
+      targetAxios.request(newConfig).catch(() => {});
       // TODO should the resulting promise be returned?
       //  Currently, I can't, because data is always a stream,
-      //  but returning it could be useful for pushing any follow-up api calls
+      //  but returning it could be useful for pushing any follow-up api calls.
     }
     // return an empty promise that never resolves.
     const emptyPromise = new Promise(() => {});
@@ -180,7 +185,8 @@ function responseInterceptor(response) {
 
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
-      sendResponse(pushResponse, response);
+      if(pushResponse)
+        sendResponse(pushResponse, response);
     });
   }
   return response;

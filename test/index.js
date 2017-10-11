@@ -2,6 +2,7 @@ import chai, { assert, expect } from 'chai';
 import sinonChai from 'sinon-chai';
 import sinon from 'sinon';
 import prepareAxios from '../src';
+
 import {
   mockAxios,
   mockServerResponse,
@@ -46,6 +47,7 @@ describe('When making requests', () => {
     axios.request = function mockRequest(config) {
       requestConfig = config;
       oldRequest(config);
+      return new Promise(() => {});
     };
 
     const wrappedAxios = prepareAxios(pageResponse, axios);
@@ -104,13 +106,13 @@ describe('When making requests', () => {
   });
 });
 
-describe('When pushing a response', () => {
+describe('When sending a push promise', () => {
   let axios;
   let axiosRequestConfig;
   let pageResponse;
   let wrappedAxios;
   let createPushResponseCallback; // args: (error, pushResponse)
-  let pushResponse;
+
   let responseInterceptor;
   let responseRejectedInterceptor;
   let apiResponse;
@@ -119,6 +121,7 @@ describe('When pushing a response', () => {
     axios = mockAxios();
     axios.request = (config) => {
       axiosRequestConfig = config;
+      return new Promise(() => {});
     };
     pageResponse = mockServerResponse();
     pageResponse.createPushResponse = (headers, callback) => {
@@ -127,9 +130,6 @@ describe('When pushing a response', () => {
     wrappedAxios = prepareAxios(pageResponse, axios);
 
     wrappedAxios.get('/endpoint');
-
-    pushResponse = mockServerResponse();
-    createPushResponseCallback(null, pushResponse);
 
     [responseInterceptor] = axios.interceptors.response.fulfilled;
     [responseRejectedInterceptor] = axios.interceptors.response.rejected;
@@ -145,86 +145,100 @@ describe('When pushing a response', () => {
       headers,
       axiosRequestConfig
     );
-
   });
 
-  it('sends a response', (done) => {
-    pushResponse.writeHead = (status, headers) => {
-      assert.equal(status, 200);
-      done();
-    };
+  it('cancels the api request if the push promise failed', () => {
+    createPushResponseCallback(new Error('ERR_HTTP2_STREAM_CLOSED'));
     responseInterceptor(apiResponse);
-  });
-
-  it('sends the right response headers', (done) => {
-    pushResponse.writeHead = (status, headers) => {
-      assert.equal(headers.Server, 'super-awesome magical server');
-      done();
-    };
-    responseInterceptor(apiResponse);
-  });
-
-  it('excludes unwanted response headers', (done) => {
-    pushResponse.writeHead = (status, headers) => {
-      assert.isUndefined(headers.Connection);
-      done();
-    };
-    responseInterceptor(apiResponse);
-  });
-
-  it('pipes the api response to the push response', (done) => {
-    apiResponse.data.pipe = function pipe(destination) {
-      assert.equal(destination, pushResponse);
-      done();
-    };
-    responseInterceptor(apiResponse);
-  });
-
-  it('cancels the api request if the push stream closes', () => {
-    pushResponse.emit('close');
     assert.isOk(apiResponse.config.cancelToken.reason);
   });
 
-  it('doesn’t cancel the ai request if everything is fine', (done) => {
-    apiResponse.data.pipe = function pipe(destination) {
-      assert.isNotOk(apiResponse.config.cancelToken.reason);
-      done();
-    };
-    responseInterceptor(apiResponse);
-  });
+  describe('and pushing an api response', () => {
+    let pushResponse;
 
-  describe('when the api has error', () => {
-    let error;
     beforeEach(() => {
-      error = {
-        code: 234,
-        errno: 234,
-        syscall: null,
-        hostname: 'example.com',
-        host: 'example.com',
-        port: 80,
-        config: axiosRequestConfig,
-        response: apiResponse
-      };
+      pushResponse = mockServerResponse();
+      createPushResponseCallback(null, pushResponse);
     });
 
-    it('responds with the error response status code', (done) => {
+    it('sends a response', (done) => {
       pushResponse.writeHead = (status, headers) => {
-        assert.equal(status, 502);
+        assert.equal(status, 200);
         done();
       };
-
-      apiResponse.status = 502;
-      responseRejectedInterceptor(error);
+      responseInterceptor(apiResponse);
     });
 
-    it('closes the stream if there was an error with no returnable response', (done) => {
-      pushResponse.stream.destroy = () => {
+    it('sends the right response headers', (done) => {
+      pushResponse.writeHead = (status, headers) => {
+        assert.equal(headers.Server, 'super-awesome magical server');
         done();
       };
+      responseInterceptor(apiResponse);
+    });
 
-      error.response = null;
-      responseRejectedInterceptor(error);
+    it('excludes unwanted response headers', (done) => {
+      pushResponse.writeHead = (status, headers) => {
+        assert.isUndefined(headers.Connection);
+        done();
+      };
+      responseInterceptor(apiResponse);
+    });
+
+    it('pipes the api response to the push response', (done) => {
+      apiResponse.data.pipe = function pipe(destination) {
+        assert.equal(destination, pushResponse);
+        done();
+      };
+      responseInterceptor(apiResponse);
+    });
+
+    it('cancels the api request if the push stream closes', () => {
+      pushResponse.emit('close');
+      assert.isOk(apiResponse.config.cancelToken.reason);
+    });
+
+    it('doesn’t cancel the ai request if everything is fine', (done) => {
+      apiResponse.data.pipe = function pipe(destination) {
+        assert.isNotOk(apiResponse.config.cancelToken.reason);
+        done();
+      };
+      responseInterceptor(apiResponse);
+    });
+
+    describe('when the api has error', () => {
+      let error;
+      beforeEach(() => {
+        error = {
+          code: 234,
+          errno: 234,
+          syscall: null,
+          hostname: 'example.com',
+          host: 'example.com',
+          port: 80,
+          config: axiosRequestConfig,
+          response: apiResponse
+        };
+      });
+
+      it('responds with the error response status code', (done) => {
+        pushResponse.writeHead = (status, headers) => {
+          assert.equal(status, 502);
+          done();
+        };
+
+        apiResponse.status = 502;
+        responseRejectedInterceptor(error).catch(() => {});
+      });
+
+      it('closes the stream if there was an error with no returnable response', (done) => {
+        pushResponse.stream.destroy = () => {
+          done();
+        };
+
+        error.response = null;
+        responseRejectedInterceptor(error).catch(() => {});
+      });
     });
   });
 });

@@ -1,15 +1,17 @@
 /* eslint-disable class-methods-use-this */
 import EventEmitter from 'events';
 
+const emptyPromise = new Promise(() => {});
+
 export function mockAxios() {
   function axios() {}
-  axios.request = () => {};
-  axios.get = () => {};
-  axios.post = () => {};
-  axios.put = () => {};
-  axios.patch = () => {};
-  axios.delete = () => {};
-  axios.head = () => {};
+  axios.request = () => emptyPromise;
+  axios.get = () => emptyPromise;
+  axios.post = () => emptyPromise;
+  axios.put = () => emptyPromise;
+  axios.patch = () => emptyPromise;
+  axios.delete = () => emptyPromise;
+  axios.head = () => emptyPromise;
   axios.interceptors = {
     request: mockAxiosInterceptor(),
     response: mockAxiosInterceptor()
