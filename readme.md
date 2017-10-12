@@ -1,4 +1,4 @@
-# Axios-Isomorphic-Push
+# Axios-Push
 
 A wrapper around Axios that will improve the performance of your isomorphic websites by pushing API responses to the client.
 
@@ -13,7 +13,7 @@ Push promises are a feature of HTTP/2. When serving a webpage, the server can al
 
 ## Usage
 
-`import prepareAxios from 'axios-isomorphic-push'`.
+`import prepareAxios from 'axios-push'`.
 
 Call it just before server-side rendering. The function takes two arguments:
 
@@ -33,7 +33,7 @@ In this example, componentWillMount() runs twice; once on the client and once on
 ```js
 import http2 from 'http2';
 import thunk from 'redux-thunk'
-import prepareAxios from 'axios-isomorphic-push';
+import prepareAxios from 'axios-push';
 import express from 'express';
 
 const options = {
@@ -49,9 +49,9 @@ app.use((request, response) => {
   const axios = prepareAxios(response);
   const reducer = combineReducers(reducers);
   const store = createStore(reducer, applyMiddleware(thunk.withExtraArgument(axios)));
-  
+
   // [...] render and respond here
-}
+});
 ```
 
 If using Redux, you can use redux-thunk's `withExtraArgument` function.

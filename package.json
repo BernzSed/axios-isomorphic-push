@@ -1,5 +1,5 @@
 {
-  "name": "axios-isomorphic-push",
+  "name": "axios-push",
   "version": "0.0.1",
   "description": "Improve the performance of isomorphic react web pages in http/2 using Axios",
   "main": "./lib/index.js",
@@ -22,11 +22,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/BernzSed/axios-isomorphic-push.git"
+    "url": "https://github.com/BernzSed/axios-push.git"
   },
-  "homepage": "https://github.com/BernzSed/axios-isomorphic-push",
+  "homepage": "https://github.com/BernzSed/axios-push",
   "bugs": {
-    "url": "https://github.com/BernzSed/axios-isomorphic-push/issues"
+    "url": "https://github.com/BernzSed/axios-push/issues"
   },
   "engines": {
     "node": ">=8.5.0"
