@@ -185,8 +185,9 @@ function responseInterceptor(response) {
 
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
-      if(pushResponse)
+      if (pushResponse) {
         sendResponse(pushResponse, response);
+      }
     });
   }
   return response;
