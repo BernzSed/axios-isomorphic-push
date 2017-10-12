@@ -26,7 +26,7 @@ On the client side, simply use `axios.create()` instead.
 
 ## Example:
 
-This is an example of an isomorphic React website.
+This is an example of an isomorphic React website. ([You can find a more complete example here.](https://github.com/BernzSed/axios-push-koa-redux-example))
 
 In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed data instead.
 
@@ -59,11 +59,11 @@ If using Redux, you can use redux-thunk's `withExtraArgument` function.
 ```js
 export function getThing(id) {
   return (dispatch, getState, axios) => {
-    axios.get('/api/things/' + id).then(
+    axios.get(`/api/things/${id}`).then(
       (thing) => dispatch(putThingInStore(thing)),
       (error) => dispatch(couldNotGetThing(error))
     );
-  }
+  };
 }
 ```
 
@@ -83,7 +83,13 @@ class MyComponent extends Component {
 This is just one example. You could also place the axios instance in [React context](https://facebook.github.io/react/docs/context.html) instead.
 
 ### Use in the browser
-When bundled by webpack for use in a browser, `prepareAxios()` simply calls `axios.create` and returns the instance. This will allow you to create the axios instance, for example, in next.js's `getInitialProps({ req, res })` (Though you should still make your api calls in `componentWillMount()` to make use of server push.)
+When bundled by webpack for use in a browser, `prepareAxios()` simply calls `axios.create()` and returns the instance.
+
+### Use in next.js
+
+You can use this in [next.js’s](https://github.com/zeit/next.js) `getInitialProps({ req, res })` function to create a wrapped axios instance for the page. In `componentWillMount`, make your api calls with the resulting axios instance if it exists, or create a new instance if it doesn't.
+
+If using [next-redux-wrapper](https://github.com/kirill-konshin/next-redux-wrapper), you can create the axios instance in your `makeStore(initialState, { req, res })` callback function.
 
 ## Caveats
 

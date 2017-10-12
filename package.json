@@ -10,7 +10,7 @@
     "src"
   ],
   "author": "Bernie Stern <bernzs@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "keywords": [
     "axios",
     "redux",
