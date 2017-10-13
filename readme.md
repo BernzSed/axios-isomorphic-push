@@ -62,6 +62,7 @@ app.use((request, response) => {
 ```
 
 If using Redux, you can use redux-thunk's `withExtraArgument` function.
+Your redux action would look like this:
 
 ```js
 export function getThing(id) {
@@ -74,7 +75,7 @@ export function getThing(id) {
 }
 ```
 
-Call the action from inside componentWillMount, as usual:
+Call the action from inside `componentWillMount()` in any component.
 
 ```js
 class MyComponent extends Component {
@@ -97,6 +98,14 @@ When bundled by webpack for use in a browser, `prepareAxios()` simply calls `axi
 You can use this in [next.js’s](https://github.com/zeit/next.js) `getInitialProps({ req, res })` function to create a wrapped axios instance for the page. In `componentWillMount`, make your api calls with the resulting axios instance if it exists, or create a new instance if it doesn't.
 
 If using [next-redux-wrapper](https://github.com/kirill-konshin/next-redux-wrapper), you can create the axios instance in your `makeStore(initialState, { req, res })` callback function.
+
+## Advantages
+
+Other solutions, such as [redux-connect](https://www.npmjs.com/package/redux-connect) or [react-resolver](https://www.npmjs.com/package/react-resolver), delay the whole page response until all the API calls have been made. Server push has a few advantages over that:
+
+- The browser receives HTML sooner and can begin fetching static content from a CDN immediately (if you're not also pushing that).
+- It provides a better user experience by displaying some content, even if just a loading icon, as soon as possible.
+- Greater flexibility of where in your code you make your API calls. This can result in cleaner code, and it's easier to add this library to existing code.
 
 ## Caveats
 

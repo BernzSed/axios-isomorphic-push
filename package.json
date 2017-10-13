@@ -13,7 +13,6 @@
   "license": "MIT",
   "keywords": [
     "axios",
-    "redux",
     "http2",
     "http/2",
     "push",
