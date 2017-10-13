@@ -1,5 +1,8 @@
 # Axios-Push
 
+[![npm version](https://img.shields.io/npm/v/axios-push.svg?style=flat)](https://www.npmjs.com/package/axios-push)
+[![Build Status](https://travis-ci.org/BernzSed/axios-push.svg?branch=master)](https://travis-ci.org/BernzSed/axios-push)
+
 A wrapper around Axios that will improve the performance of your isomorphic websites by pushing API responses to the client.
 
 ### About isomorphic websites:
