@@ -10,13 +10,17 @@ Isomorphic websites run on both the server and client, doing much of the initial
 
 By running client-side code on the server first, we can find out exactly what API requests the client will make, and make those requests on the server first.
 
-### About push promises:
-Push promises are a feature of HTTP/2. When serving a webpage, the server can also promise to send other related files (like css, js, images, or even api calls), so the client doesn't have to request them.  
+### About server push:
+When serving a webpage over HTTP/2, the server can also promise to send other related files (like css, js, images, or even api calls), so the client doesn't have to request them.  
 [More info](https://en.wikipedia.org/wiki/HTTP/2_Server_Push)
+
+## Installation
+
+`npm i --save axios-push`
 
 ## Usage
 
-`import prepareAxios from 'axios-push'`.
+`import prepareAxios from 'axios-push';`
 
 Call it just before server-side rendering. The function takes two arguments:
 
@@ -31,7 +35,7 @@ On the client side, simply use `axios.create()` instead.
 
 This is an example of an isomorphic React website. ([You can find a more complete example here.](https://github.com/BernzSed/axios-push-koa-redux-example))
 
-In this example, componentWillMount() runs twice; once on the client and once on the server. However, the API call is only made once, because the browser will use the pushed data instead.
+`componentWillMount()` runs on both the client and the server. However, the browser does not call the API. It waits for the pushed data instead.
 
 ```js
 import http2 from 'http2';
