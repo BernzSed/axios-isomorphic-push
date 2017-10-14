@@ -107,7 +107,7 @@ Other solutions, such as [redux-connect](https://www.npmjs.com/package/redux-con
 - It provides a better user experience by displaying some content, even if just a loading icon, as soon as possible.
 - Greater flexibility of where in your code you make your API calls. This can result in cleaner code, and it's easier to add this library to existing code.
 
-<img src="docs/sequence.svg" alt="A sequence diagram shows the advantage of using HTTP/2 push for api calls"/>
+<img src="docs/sequence.png" alt="A sequence diagram shows the advantage of using HTTP/2 push for api calls"/>
 
 ## Caveats
 
