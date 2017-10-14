@@ -47,17 +47,17 @@
     "eslint-config-airbnb-base": "^12.0.1",
     "eslint-plugin-import": "^2.7.0",
     "istanbul": "^0.4.5",
-    "mocha": "^3.5.3",
+    "mocha": "^4.0.1",
     "rimraf": "^2.6.2",
     "sinon": "^4.0.0",
     "sinon-chai": "^2.14.0"
   },
   "scripts": {
     "clean": "rimraf lib",
-    "test": "cross-env BABEL_ENV=commonjs mocha --compilers js:babel-register --recursive --reporter spec",
+    "test": "cross-env BABEL_ENV=commonjs mocha --require babel-register --recursive --reporter spec",
     "test:watch": "npm test -- --watch",
     "test:examples": "node examples/",
-    "cover": "cross-env BABEL_ENV=commonjs istanbul cover _mocha -- --compilers js:babel-register --recursive",
+    "cover": "cross-env BABEL_ENV=commonjs istanbul cover _mocha -- --require babel-register --recursive",
     "lint": "eslint src test",
     "build": "cross-env BABEL_ENV=commonjs babel src --out-dir lib",
     "prepublishOnly": "npm run clean && npm run lint && npm run test && npm run build"
