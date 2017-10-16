@@ -1,6 +1,6 @@
 {
   "name": "axios-push",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Improve the performance of isomorphic react web pages in http/2 using Axios",
   "main": "./lib/index.js",
   "browser": "./lib/browser.js",
