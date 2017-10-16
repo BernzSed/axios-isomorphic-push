@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 
 const emptyPromise = new Promise(() => {});
 
-export function mockAxios() {
+export function mockAxios(defaults = {}) {
   function axios() {}
   axios.request = () => emptyPromise;
   axios.get = () => emptyPromise;
@@ -16,7 +16,7 @@ export function mockAxios() {
     request: mockAxiosInterceptor(),
     response: mockAxiosInterceptor()
   };
-  axios.defaults = {};
+  axios.defaults = defaults;
 
   return axios;
 }

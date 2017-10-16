@@ -2,10 +2,13 @@ import url from 'url';
 import { CancelToken } from 'axios';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
+import { merge } from 'axios/lib/utils';
 import getTargetAxios from './getTargetAxios';
 import filterResponseHeaders from './filterResponseHeaders';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
+
+const returnableResponseTypes = ['stream', 'string']; // TODO json
 
 function canPush(pageResponse, requestURL, config) {
   return pageResponse.stream && pageResponse.stream.pushAllowed &&
@@ -17,6 +20,15 @@ function canPush(pageResponse, requestURL, config) {
 // TODO should also give the option to disable all push requests and
 //    instead just make requests as normal (for pre-rendering the html)
 //    or ignore all requests (for after the response has been sent).
+
+function getRequestConfig(params, method, hasData, targetAxios) {
+  const paramsConfig = hasData ?
+    getRequestConfigWithData(method, params) :
+    getRequestConfigWithoutData(method, params);
+
+  // TODO maybe don't use so many internal functions from axios/lib
+  return merge(targetAxios.defaults, paramsConfig);
+}
 
 // for request that contain no data (GET, HEAD, DELETE)
 function getRequestConfigWithoutData(method, [arg1, arg2]) {
@@ -46,6 +58,26 @@ function getWord(str) {
   return result && result[0];
 }
 
+function getRequestHeaders(config, requestURL) {
+  const requestHeaders = {
+    ...(config.headers || {}).common,
+    ...(config.headers || {})[config.method],
+    ...config.headers,
+    ':path': requestURL.path,
+    ':authority': requestURL.host,
+    ':method': config.method.toUpperCase(),
+    ':scheme': getWord(requestURL.protocol) || 'https'
+  };
+
+  // duplicating axios's internal logic from /lib/core/dispatchRequest.js
+  ['delete', 'get', 'head', 'post', 'put', 'patch', 'common']
+    .forEach(function cleanHeaderConfig(method) {
+      delete requestHeaders[method];
+    });
+
+  return requestHeaders;
+}
+
 /**
  * Wraps axios in something that will monitor requests/responses and
  * will issue push promises
@@ -68,11 +100,9 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   // This is why we have to wrap axios instead of just adding interceptors.
 
   function interceptRequest(params, method, hasData) {
-    const config = hasData ?
-      getRequestConfigWithData(method, params) :
-      getRequestConfigWithoutData(method, params);
+    const config = getRequestConfig(params, method, hasData, targetAxios);
 
-    const baseURL = targetAxios.defaults.baseURL || config.baseURL;
+    const baseURL = config.baseURL || targetAxios.defaults.baseURL;
     const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
       combineURLs(baseURL, config.url) :
       config.url;
@@ -81,13 +111,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     if (canPush(pageResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
-      const requestHeaders = {
-        ...config.headers,
-        ':path': requestURL.path,
-        ':authority': requestURL.host,
-        ':method': config.method.toUpperCase(),
-        ':scheme': getWord(requestURL.protocol) || 'https'
-      };
+      const requestHeaders = getRequestHeaders(config, requestURL);
 
       const cancelSource = CancelToken.source();
 
@@ -111,6 +135,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const newConfig = {
         ...config,
         responseType: 'stream',
+        originalResponseType: config.responseType,
         cancelToken: cancelSource.token,
         pushResponsePromise
       };
@@ -164,6 +189,18 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   return axiosWrapper;
 }
 
+function shouldBeChained(config) {
+  const userWantsToChainRequests =
+    typeof config.chainedRequest === 'function' ?
+      config.chainedRequest() :
+      config.chainedRequest;
+  return userWantsToChainRequests && canReturnResponse(config);
+}
+
+function canReturnResponse(config) {
+  return returnableResponseTypes.includes(config.originalResponseType);
+}
+
 function sendResponse(pushResponse, apiResponse) {
   const { status, data } = apiResponse;
   const headers = filterResponseHeaders(apiResponse.headers);
@@ -182,6 +219,10 @@ function responseInterceptor(response) {
   //    timeout, xsrfCookieName, xsrfHeaderName, maxContentLength,
   //    validateStatus, headers, method, url, data }
   const { config } = response;
+
+  // TODO use this to chain api calls (and delete eslint-disable)
+  // eslint-disable-next-line no-unused-vars
+  const isChained = shouldBeChained(config);
 
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {

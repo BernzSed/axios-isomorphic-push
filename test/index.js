@@ -37,7 +37,17 @@ describe('When making requests', () => {
   let pageResponse;
 
   beforeEach(() => {
-    axios = mockAxios();
+    axios = mockAxios({
+      headers: {
+        'X-Axios-Defaults-Header': 'headers',
+        common: {
+          'X-Axios-Defaults-Common-Header': 'common'
+        },
+        get: {
+          'X-Axios-Defaults-GET-Header': 'get'
+        }
+      }
+    });
     pageResponse = mockServerResponse();
   });
 
@@ -79,6 +89,19 @@ describe('When making requests', () => {
     it('takes the scheme from the url', () => {
       wrappedAxios.get('gopher://www.example.com/api/foo');
       assert.equal(pushHeaders[':scheme'], 'gopher');
+    });
+
+    it('sends request headers from axios defaults', () => {
+      wrappedAxios.get('/foo');
+      assert.equal(pushHeaders['X-Axios-Defaults-Header'], 'headers');
+    });
+    it('sends request headers from axios defaults.headers.common', () => {
+      wrappedAxios.get('/foo');
+      assert.equal(pushHeaders['X-Axios-Defaults-Common-Header'], 'common');
+    });
+    it('sends request headers from axios defaults.headers.get', () => {
+      wrappedAxios.get('/foo');
+      assert.equal(pushHeaders['X-Axios-Defaults-GET-Header'], 'get');
     });
   });
 
