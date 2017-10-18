@@ -148,9 +148,9 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       };
 
       // return targetAxios.request(newConfig).catch(err => emptyPromise());
-      return targetAxios.request(newConfig).catch(err => {
+      return targetAxios.request(newConfig).catch((err) => {
         console.warn('axios-push ignoring error', err); // TODO delete line
-        return emptyPromise()
+        return emptyPromise();
       });
     } else {
       // return an empty promise that never resolves.
@@ -196,6 +196,24 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   return axiosWrapper;
 }
 
+const responseDataConverters = {
+  stream(data) {
+    return data;
+  },
+  json(data) {
+    return streamToString(data).then((str) => {
+      try {
+        return JSON.parse(str);
+      } catch (err) {
+        return str;
+      }
+    });
+  },
+  string(data) {
+    return streamToString(data);
+  }
+};
+
 // TODO a lot of this should be moved into its own file.
 function shouldBeChained(config) {
   return chainedRequestWanted(config) && canReturnResponse(config);
@@ -231,24 +249,6 @@ function sendResponseNow(pushResponse, apiResponse) {
     pushResponse.end(data);
   }
 }
-
-const responseDataConverters = {
-  stream(data) {
-    return data;
-  },
-  json(data) {
-    return streamToString(data).then(str => {
-      try {
-        return JSON.parse(str);
-      } catch(err) {
-        return str;
-      }
-    });
-  },
-  string(data) {
-    return streamToString(data);
-  }
-};
 
 function convertToOriginalResponseType(response) {
   const { originalResponseType } = response.config;
