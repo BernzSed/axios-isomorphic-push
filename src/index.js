@@ -114,6 +114,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const requestHeaders = getRequestHeaders(config, requestURL);
 
       const cancelSource = CancelToken.source();
+      // TODO if existing config.token, combine it with this one.
 
       const pushResponsePromise = new Promise((resolve) => {
         // TODO try to use the main pageResponse, but if it's already closed,
@@ -140,13 +141,17 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const newConfig = {
         ...config,
         responseType: 'stream',
-        originalResponseType: config.responseType,
+        originalResponseType: config.responseType || 'json',
         // TODO transformResponse ?
         cancelToken: cancelSource.token,
         pushResponsePromise
       };
 
-      return targetAxios.request(newConfig).catch(err => emptyPromise());
+      // return targetAxios.request(newConfig).catch(err => emptyPromise());
+      return targetAxios.request(newConfig).catch(err => {
+        console.warn('axios-push ignoring error', err); // TODO delete line
+        return emptyPromise()
+      });
     } else {
       // return an empty promise that never resolves.
       return emptyPromise(); // TODO refactor multiple returns
@@ -193,8 +198,6 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
 
 // TODO a lot of this should be moved into its own file.
 function shouldBeChained(config) {
-  // TODO responseType can be (and is by default) undefined. I thought it defaulted to json, but not sure. Anyway, fix it!
-  console.log('shouldBeChained', config.originalResponseType, chainedRequestWanted(config), canReturnResponse(config));
   return chainedRequestWanted(config) && canReturnResponse(config);
 }
 function chainedRequestWanted(config) {
@@ -233,13 +236,14 @@ const responseDataConverters = {
   stream(data) {
     return data;
   },
-  async json(data) {
-    const str = streamToString(data);
-    try {
-      return JSON.parse(str);
-    } catch(err) {
-      return str;
-    }
+  json(data) {
+    return streamToString(data).then(str => {
+      try {
+        return JSON.parse(str);
+      } catch(err) {
+        return str;
+      }
+    });
   },
   string(data) {
     return streamToString(data);
@@ -272,7 +276,6 @@ function responseInterceptor(response) {
   //    validateStatus, headers, method, url, data }
   const { config } = response;
 
-  console.log('responseInterceptor', response);
   const isChained = shouldBeChained(config);
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
