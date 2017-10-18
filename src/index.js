@@ -17,10 +17,6 @@ function canPush(pageResponse, requestURL, config) {
   // TODO don't push the same thing multiple times
 }
 
-// TODO should also give the option to disable all push requests and
-//    instead just make requests as normal (for pre-rendering the html)
-//    or ignore all requests (for after the response has been sent).
-
 function getRequestConfig(params, method, hasData, targetAxios) {
   const paramsConfig = hasData ?
     getRequestConfigWithData(method, params) :
@@ -92,6 +88,12 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     // don't wrap it if on client side
     return targetAxios;
   }
+
+  // TODO create a serverResponse pool, starting with just pageResponse.
+  // When chainedRequest, add apiResponse to response pool.
+  // Remove responses from the pool when their stream closes. (Listen for it)
+  // Use it for push promises made after pageResponse closes (for chaining).
+
 
   // Unfortunately, we can't use a real request interceptor.
   // Axios doesn't call its request interceptors immediately, so the
@@ -196,12 +198,20 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   return axiosWrapper;
 }
 
+function streamOrStringToString(data) {
+  if (typeof data === 'string') {
+    return Promise.resolve(data);
+  } else {
+    return streamToString(data);
+  }
+}
+
 const responseDataConverters = {
   stream(data) {
     return data;
   },
   json(data) {
-    return streamToString(data).then((str) => {
+    return streamOrStringToString(data).then((str) => {
       try {
         return JSON.parse(str);
       } catch (err) {
@@ -210,7 +220,7 @@ const responseDataConverters = {
     });
   },
   string(data) {
-    return streamToString(data);
+    return streamOrStringToString(data);
   }
 };
 

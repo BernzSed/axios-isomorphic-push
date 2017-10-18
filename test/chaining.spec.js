@@ -1,4 +1,4 @@
-// import { PassThrough } from 'stream'; // TODO test with a stream
+import { PassThrough } from 'stream';
 import chai, { assert, expect } from 'chai';
 import sinonChai from 'sinon-chai';
 import axios from 'axios';
@@ -16,11 +16,13 @@ describe('Chained requests', () => {
   let wrappedAxios;
 
   beforeEach(() => {
+    const responseBody = new PassThrough();
+    responseBody.end('{foo: "bar"}');
+    responseBody.toString = () => '<stream>'; // hack for MockAxiosAdapter
+
     const actualAxios = axios.create();
     axiosMock = new MockAxiosAdapter(actualAxios);
-    axiosMock.onGet('/foo').reply(200, {
-      foo: 'bar'
-    }, {
+    axiosMock.onGet('/foo').reply(200, responseBody, {
       'X-HEADER-NAME': 'header_value'
     });
 
