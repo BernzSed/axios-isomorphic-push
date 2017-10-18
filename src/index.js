@@ -1,14 +1,14 @@
 import url from 'url';
 import { CancelToken } from 'axios';
+import streamToString from 'stream-to-string';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
 import { merge } from 'axios/lib/utils';
 import getTargetAxios from './getTargetAxios';
 import filterResponseHeaders from './filterResponseHeaders';
+import emptyPromise from './emptyPromise';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
-
-const returnableResponseTypes = ['stream', 'string']; // TODO json
 
 function canPush(pageResponse, requestURL, config) {
   return pageResponse.stream && pageResponse.stream.pushAllowed &&
@@ -116,6 +116,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const cancelSource = CancelToken.source();
 
       const pushResponsePromise = new Promise((resolve) => {
+        // TODO try to use the main pageResponse, but if it's already closed,
+        //    use a different available response.
         pageResponse.createPushResponse(
           requestHeaders,
           (err, pushResponse) => {
@@ -124,6 +126,9 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
               cancelSource.cancel('Push promise failed');
             } else {
               pushResponse.on('close', () => {
+                // The browser sent RST_STREAM requesting to cancel.
+                // You can get Chrome to send this by refreshing the
+                // view-source: page at least once; it refuses duplicate pushes.
                 cancelSource.cancel('Push stream closed');
               });
               resolve(pushResponse);
@@ -136,19 +141,16 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         ...config,
         responseType: 'stream',
         originalResponseType: config.responseType,
+        // TODO transformResponse ?
         cancelToken: cancelSource.token,
         pushResponsePromise
       };
 
-      targetAxios.request(newConfig).catch(() => {});
-      // TODO should the resulting promise be returned?
-      //  Currently, I can't, because data is always a stream,
-      //  but returning it could be useful for pushing any follow-up api calls.
+      return targetAxios.request(newConfig).catch(err => emptyPromise());
+    } else {
+      // return an empty promise that never resolves.
+      return emptyPromise(); // TODO refactor multiple returns
     }
-    // return an empty promise that never resolves.
-    const emptyPromise = new Promise(() => {});
-    emptyPromise.empty = true;
-    return emptyPromise;
   }
 
   if (!targetAxios.usingIsomorphicPushInterceptors) {
@@ -189,19 +191,33 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   return axiosWrapper;
 }
 
+// TODO a lot of this should be moved into its own file.
 function shouldBeChained(config) {
-  const userWantsToChainRequests =
-    typeof config.chainedRequest === 'function' ?
-      config.chainedRequest() :
-      config.chainedRequest;
-  return userWantsToChainRequests && canReturnResponse(config);
+  // TODO responseType can be (and is by default) undefined. I thought it defaulted to json, but not sure. Anyway, fix it!
+  console.log('shouldBeChained', config.originalResponseType, chainedRequestWanted(config), canReturnResponse(config));
+  return chainedRequestWanted(config) && canReturnResponse(config);
 }
-
+function chainedRequestWanted(config) {
+  if (typeof config.chainedRequest === 'function') {
+    return config.chainedRequest();
+  } else {
+    return config.chainedRequest;
+  }
+}
 function canReturnResponse(config) {
-  return returnableResponseTypes.includes(config.originalResponseType);
+  return !!responseDataConverters[config.originalResponseType];
 }
 
-function sendResponse(pushResponse, apiResponse) {
+function sendResponse(pushResponse, apiResponse, isChained) {
+  if (isChained) {
+    setTimeout(sendResponseNow, 100, pushResponse, apiResponse);
+    // TODO save pushResponse for later so chained pushes can be made.
+    //      (Maybe keep an array of them?)
+  } else {
+    sendResponseNow(pushResponse, apiResponse);
+  }
+}
+function sendResponseNow(pushResponse, apiResponse) {
   const { status, data } = apiResponse;
   const headers = filterResponseHeaders(apiResponse.headers);
 
@@ -213,6 +229,42 @@ function sendResponse(pushResponse, apiResponse) {
   }
 }
 
+const responseDataConverters = {
+  stream(data) {
+    return data;
+  },
+  async json(data) {
+    const str = streamToString(data);
+    try {
+      return JSON.parse(str);
+    } catch(err) {
+      return str;
+    }
+  },
+  string(data) {
+    return streamToString(data);
+  }
+};
+
+function convertToOriginalResponseType(response) {
+  const { originalResponseType } = response.config;
+  const convertData = responseDataConverters[originalResponseType];
+  if (convertData) {
+    return convertData(response.data).then(data => ({
+      // TODO this won't work if response is a class instance. Double check that.
+      ...response,
+      data,
+      config: {
+        ...response.config,
+        responseType: originalResponseType
+      }
+    }));
+    // TODO transformResponse ?
+  } else {
+    return emptyPromise();
+  }
+}
+
 function responseInterceptor(response) {
   // response = { status, statusText, headers, config, request, data }
   // response.config = { adapter, transformRequest, transformResponse,
@@ -220,18 +272,17 @@ function responseInterceptor(response) {
   //    validateStatus, headers, method, url, data }
   const { config } = response;
 
-  // TODO use this to chain api calls (and delete eslint-disable)
-  // eslint-disable-next-line no-unused-vars
+  console.log('responseInterceptor', response);
   const isChained = shouldBeChained(config);
-
   if (config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
       if (pushResponse) {
-        sendResponse(pushResponse, response);
+        sendResponse(pushResponse, response, isChained);
       }
     });
   }
-  return response;
+
+  return isChained ? convertToOriginalResponseType(response) : emptyPromise();
 }
 
 function responseRejectedInterceptor(error) {
@@ -240,7 +291,7 @@ function responseRejectedInterceptor(error) {
   if (config && config.pushResponsePromise) {
     config.pushResponsePromise.then((pushResponse) => {
       if (response && response.data) {
-        sendResponse(pushResponse, response);
+        sendResponse(pushResponse, response, false);
       } else {
         pushResponse.stream.destroy(code);
       }

@@ -32,7 +32,8 @@
   },
   "dependencies": {
     "axios": "^0.15.3",
-    "filter-values": "^0.4.1"
+    "filter-values": "^0.4.1",
+    "stream-to-string": "^1.1.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

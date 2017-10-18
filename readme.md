@@ -27,27 +27,26 @@ Call it just before server-side rendering. The function takes two arguments:
 `prepareAxios(response, [axios])`
 
 - `response` – [`<Http2ServerResponse>`](https://nodejs.org/api/http2.html#http2_class_http2_http2serverresponse) for the currently rendering webpage.
-- `axios` – (Optional) Either an instance of axios created by `axios.create()`, or a [config object](https://github.com/axios/axios#creating-an-instance) to pass into `axios.create()`.
+- `axios` – (Optional) Either an [Axios instance](https://github.com/axios/axios#creating-an-instance), or an Axios config object.
 
-It returns an instance of axios. Use it in place of `axios.create()` on the server side.
+It returns an instance of Axios. Use it in place of `axios.create()` on the server side.
 
 ### Basic usage
 
 Any API calls you make using axios-push are pushed to the client.
 
-On the server side, all functions return a promise that never resolves. This allows you to write your code as if it were client-side only.
+On the server side, all Axios functions return a promise that never resolves. This allows you to write your code as if it were client-side only.
 
 ```js
 axios.get('/foo').then(response => { /* this block only runs on the client side */ });
 ```
 
-COMING SOON:
 If you want to make additional API calls on the server side, add `chainedRequest: true` to the request config:
 
 ```js
 axios.get('/foo', { chainedRequest: true })
-	.then({ data } => axios.get(`/bar/${data.id}`)
-	.then(response => { /* this block only runs on the client side */ });
+  .then(response => axios.get(`/bar?fooId=${response.data.id}`))
+  .then(response => { /* this block only runs on the client side */ });
 ```
 
 ## Example:
