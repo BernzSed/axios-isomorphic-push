@@ -2,7 +2,7 @@ import { PassThrough } from 'stream';
 import chai, { assert, expect } from 'chai';
 import sinonChai from 'sinon-chai';
 import axios from 'axios';
-import MockAxiosAdapter from 'axios-mock-adapter';
+import moxios from 'moxios';
 import prepareAxios from '../src';
 import { mockServerResponse } from './mocks';
 
@@ -11,27 +11,31 @@ chai.use(sinonChai);
 
 describe('Chained requests', () => {
 
-  let axiosMock;
   let pageResponse;
   let wrappedAxios;
 
   beforeEach(() => {
+    moxios.install();
+
     const responseBody = new PassThrough();
-    responseBody.end('{foo: "bar"}');
-    responseBody.toString = () => '<stream>'; // hack for MockAxiosAdapter
+    responseBody.end('{"foo": "bar"}');
+
+    moxios.stubRequest('/foo', {
+      response: responseBody
+    });
 
     const actualAxios = axios.create();
-    axiosMock = new MockAxiosAdapter(actualAxios);
-    axiosMock.onGet('/foo').reply(200, responseBody, {
-      'X-HEADER-NAME': 'header_value'
-    });
 
     pageResponse = mockServerResponse();
 
     wrappedAxios = prepareAxios(pageResponse, actualAxios);
   });
 
-  it('return a promise that fulfills', (done) => {
+  afterEach(() => {
+    moxios.uninstall();
+  });
+
+  it('returns a promise that resolves', (done) => {
     wrappedAxios.get('/foo', {
       chainedRequest: true,
       type: 'json'
@@ -39,4 +43,16 @@ describe('Chained requests', () => {
       done();
     });
   });
+
+  it('resolves with json from the stream', (done) => {
+    wrappedAxios.get('/foo', {
+      chainedRequest: true,
+      type: 'json'
+    }).then((response) => {
+      assert.equal(response.data.foo, 'bar');
+      done();
+    });
+  });
+
+
 });
