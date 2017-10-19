@@ -54,5 +54,8 @@ describe('Chained requests', () => {
     });
   });
 
+  it.skip('sends a push_promise using an available response stream', (done) => {
+    // TODO
+  });
 
 });

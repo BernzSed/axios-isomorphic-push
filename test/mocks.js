@@ -42,6 +42,7 @@ export class MockServerResponse extends EventEmitter {
     super();
     this.stream = {
       pushAllowed: true,
+      destroyed: false,
       destroy() {}
     };
   }

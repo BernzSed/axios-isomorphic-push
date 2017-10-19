@@ -7,11 +7,14 @@ import { merge } from 'axios/lib/utils';
 import getTargetAxios from './getTargetAxios';
 import filterResponseHeaders from './filterResponseHeaders';
 import emptyPromise from './emptyPromise';
+import ResponsePool from './responsePool';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
 function canPush(pageResponse, requestURL, config) {
-  return pageResponse.stream && pageResponse.stream.pushAllowed &&
+  return pageResponse &&
+    pageResponse.stream &&
+    pageResponse.stream.pushAllowed &&
     pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
   // TODO don't push the same thing multiple times
@@ -89,11 +92,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     return targetAxios;
   }
 
-  // TODO create a serverResponse pool, starting with just pageResponse.
-  // When chainedRequest, add apiResponse to response pool.
-  // Remove responses from the pool when their stream closes. (Listen for it)
-  // Use it for push promises made after pageResponse closes (for chaining).
-
+  const responsePool = new ResponsePool();
+  responsePool.add(pageResponse);
 
   // Unfortunately, we can't use a real request interceptor.
   // Axios doesn't call its request interceptors immediately, so the
@@ -110,7 +110,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       config.url;
     const requestURL = url.parse(requestURLString);
 
-    if (canPush(pageResponse, requestURL, config)) {
+    const serverResponse = responsePool.get();
+    if (canPush(serverResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
       const requestHeaders = getRequestHeaders(config, requestURL);
@@ -119,15 +120,15 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       // TODO if existing config.token, combine it with this one.
 
       const pushResponsePromise = new Promise((resolve) => {
-        // TODO try to use the main pageResponse, but if it's already closed,
-        //    use a different available response.
-        pageResponse.createPushResponse(
+        serverResponse.createPushResponse(
           requestHeaders,
           (err, pushResponse) => {
             if (err) {
               // Can't reject the promise because nothing will catch() it.
               cancelSource.cancel('Push promise failed');
             } else {
+              responsePool.add(pushResponse);
+
               pushResponse.on('close', () => {
                 // The browser sent RST_STREAM requesting to cancel.
                 // You can get Chrome to send this by refreshing the
