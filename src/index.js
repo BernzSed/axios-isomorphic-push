@@ -15,11 +15,12 @@ const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
 function canPush(pageResponse, requestURL, config) {
   return pageResponse &&
+    !pageResponse.finished &&
     pageResponse.stream &&
     pageResponse.stream.pushAllowed &&
     pushableMethods.includes(config.method.toUpperCase());
   // TODO also check domain
-  // TODO don't push the same thing multiple times
+  // TODO don't push the same thing multiple times. Browser will send RST_STREAM
 }
 
 function getRequestConfig(params, method, hasData, targetAxios) {
@@ -113,6 +114,15 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
     const requestURL = url.parse(requestURLString);
 
     const serverResponse = responsePool.get();
+
+    // TODO FIXME FIXME
+    // So, it turns out this is not allowed, per the spec:
+    // "PUSH_PROMISE frames MUST only be sent on a peer-initiated stream"
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=585477
+    // I HAVE to use the client-initiated stream. Which is possible,
+    // but complicated because the stream must be kept open.
+    // TODO add a promise the dev can wait for before calling response.end()
+
     if (canPush(serverResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority

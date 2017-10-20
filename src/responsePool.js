@@ -15,4 +15,10 @@ export default class ResponsePool {
   get() {
     return this.responses.values().next().value;
   }
+
+  waitUntilEmpty() {
+    // TODO resolve promise when all responses are resolved,
+    // including any new responses that are added.
+    return Promise.resolve();
+  }
 }

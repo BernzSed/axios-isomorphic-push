@@ -44,6 +44,9 @@ function canReturnResponse(config) {
 
 function sendResponse(pushResponse, apiResponse, isChained) {
   if (isChained) {
+    // TODO this is not needed to send the next push resonse,
+    // but not sure if needed to prevent a premature request from client.
+    // TODO also, I shouldn't be relying on timeouts anyway.
     setTimeout(sendResponseNow, 100, pushResponse, apiResponse);
   } else {
     sendResponseNow(pushResponse, apiResponse);
@@ -55,6 +58,7 @@ function sendResponseNow(pushResponse, apiResponse) {
 
   pushResponse.writeHead(status, headers);
   if (data && data.pipe) {
+    // TODO FIXME when chained, this isn't piping. (Probably because of timeout in sendResponse)
     data.pipe(pushResponse);
   } else {
     pushResponse.end(data);
