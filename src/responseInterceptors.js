@@ -29,14 +29,7 @@ const responseDataConverters = {
 };
 
 function shouldBeChained(config) {
-  return chainedRequestWanted(config) && canReturnResponse(config);
-}
-function chainedRequestWanted(config) {
-  if (typeof config.chainedRequest === 'function') {
-    return config.chainedRequest();
-  } else {
-    return config.chainedRequest;
-  }
+  return config.chainedRequest && canReturnResponse(config);
 }
 function canReturnResponse(config) {
   return !!responseDataConverters[config.originalResponseType];

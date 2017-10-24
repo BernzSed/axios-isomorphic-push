@@ -1,5 +1,5 @@
 import { PassThrough } from 'stream';
-import chai, { assert, expect } from 'chai';
+import chai, { assert } from 'chai';
 import sinonChai from 'sinon-chai';
 import axios from 'axios';
 import moxios from 'moxios';
@@ -54,7 +54,7 @@ describe('Chained requests', () => {
     });
   });
 
-  it.skip('sends a push_promise using an available response stream', (done) => {
+  it.skip('resolves a promise once chained calls have completed', (done) => {
     // TODO
   });
 

@@ -20,6 +20,10 @@ describe('ResponsePool', () => {
     pool.add(responseC);
   });
 
+  it('returns the size', () => {
+    assert.equal(3, pool.size);
+  });
+
   it('returns the first available response', () => {
     assert.equal(responseA, pool.get());
   });
@@ -40,5 +44,18 @@ describe('ResponsePool', () => {
     responseC.emit('finish');
 
     assert.isNotOk(pool.get());
+  });
+
+  it('waits until the response pool is empty', (done) => {
+    pool.waitUntilEmpty().then(() => {
+      assert.equal(0, pool.size);
+      done();
+    });
+    responseA.emit('close');
+    responseB.emit('finish');
+    responseC.emit('close');
+    const responseD = mockServerResponse();
+    pool.add(responseD);
+    responseD.emit('close');
   });
 });

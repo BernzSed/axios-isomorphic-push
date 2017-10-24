@@ -10,6 +10,7 @@ import {
   responseInterceptor,
   responseRejectedInterceptor
 } from './responseInterceptors';
+import browser from './browser';
 
 const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
 
@@ -92,11 +93,10 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
 
   if (global.window || !pageResponse) {
     // don't wrap it if on client side
-    return targetAxios;
+    return browser.prepareAxios(pageResponse, axiosParam);
   }
 
-  const responsePool = new ResponsePool();
-  responsePool.add(pageResponse);
+  const chainedResponses = new ResponsePool();
 
   // Unfortunately, we can't use a real request interceptor.
   // Axios doesn't call its request interceptors immediately, so the
@@ -113,17 +113,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       config.url;
     const requestURL = url.parse(requestURLString);
 
-    const serverResponse = responsePool.get();
-
-    // TODO FIXME FIXME
-    // So, it turns out this is not allowed, per the spec:
-    // "PUSH_PROMISE frames MUST only be sent on a peer-initiated stream"
-    // https://bugs.chromium.org/p/chromium/issues/detail?id=585477
-    // I HAVE to use the client-initiated stream. Which is possible,
-    // but complicated because the stream must be kept open.
-    // TODO add a promise the dev can wait for before calling response.end()
-
-    if (canPush(serverResponse, requestURL, config)) {
+    if (canPush(pageResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
       // http/2 pseudo headers: :method, :path, :scheme, :authority
       const requestHeaders = getRequestHeaders(config, requestURL);
@@ -132,14 +122,16 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       // TODO if existing config.token, combine it with this one.
 
       const pushResponsePromise = new Promise((resolve) => {
-        serverResponse.createPushResponse(
+        pageResponse.createPushResponse(
           requestHeaders,
           (err, pushResponse) => {
             if (err) {
               // Can't reject the promise because nothing will catch() it.
               cancelSource.cancel('Push promise failed');
             } else {
-              responsePool.add(pushResponse);
+              if (config.chainedRequest) {
+                chainedResponses.add(pushResponse);
+              }
 
               pushResponse.on('close', () => {
                 // The browser sent RST_STREAM requesting to cancel.
@@ -162,11 +154,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
         pushResponsePromise
       };
 
-      // return targetAxios.request(newConfig).catch(err => emptyPromise());
-      return targetAxios.request(newConfig).catch((err) => {
-        console.warn('axios-push ignoring error', err); // TODO delete line
-        return emptyPromise();
-      });
+      return targetAxios.request(newConfig).catch(err => emptyPromise());
     } else {
       // return an empty promise that never resolves.
       return emptyPromise(); // TODO refactor multiple returns
@@ -207,6 +195,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   axiosWrapper.defaults = targetAxios.defaults;
 
   axiosWrapper.targetAxios = targetAxios;
+
+  axiosWrapper.waitForChained = () => chainedResponses.waitUntilEmpty();
 
   return axiosWrapper;
 }

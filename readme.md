@@ -24,10 +24,10 @@ When serving a webpage over HTTP/2, the server can also promise to send other re
 
 Call it just before server-side rendering. The function takes two arguments:
 
-`prepareAxios(response, [axios])`
+`const axios = prepareAxios(response, [axiosInit])`
 
 - `response` – [`<Http2ServerResponse>`](https://nodejs.org/api/http2.html#http2_class_http2_http2serverresponse) for the currently rendering webpage.
-- `axios` – (Optional) Either an [Axios instance](https://github.com/axios/axios#creating-an-instance), or an Axios config object.
+- `axiosInit` – (Optional) Either an [Axios instance](https://github.com/axios/axios#creating-an-instance), or an Axios config object.
 
 It returns an instance of Axios. Use it in place of `axios.create()` on the server side.
 
@@ -41,12 +41,28 @@ On the server side, all Axios functions return a promise that never resolves. Th
 axios.get('/foo').then(response => { /* this block only runs on the client side */ });
 ```
 
-If you want to make additional API calls on the server side, add `chainedRequest: true` to the request config:
+### Chained API calls
+
+If you want to chain API calls on the server side, add `chainedRequest: true` to the request config:
 
 ```js
 axios.get('/foo', { chainedRequest: true })
   .then(response => axios.get(`/bar?fooId=${response.data.id}`))
   .then(response => { /* this block only runs on the client side */ });
+```
+
+You'll have to keep the page's response stream open a bit longer for chaining to work.
+
+When server-side rendering, instead of this:
+
+```js
+res.end(html);
+```
+Use this:
+
+```js 
+response.write(html);
+axios.waitForChained().then(() => res.end());
 ```
 
 ## Example:

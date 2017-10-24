@@ -16,9 +16,26 @@ export default class ResponsePool {
     return this.responses.values().next().value;
   }
 
+  get size() {
+    return this.responses.size;
+  }
+
   waitUntilEmpty() {
-    // TODO resolve promise when all responses are resolved,
-    // including any new responses that are added.
-    return Promise.resolve();
+    return Promise.all([...this.responses].map(response =>
+      new Promise((resolve) => {
+        response.on('close', resolve);
+        response.on('finish', resolve);
+        if (response.finished) { // TODO is that true on close, or just finish?
+          resolve();
+        }
+      })))
+      .then(() => new Promise(resolve => setTimeout(resolve, 0)))
+      .then(() => {
+        if (!this.responses.size) {
+          return Promise.resolve();
+        } else {
+          return this.waitUntilEmpty();
+        }
+      });
   }
 }
