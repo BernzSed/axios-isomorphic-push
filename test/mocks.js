@@ -1,5 +1,6 @@
 /* eslint-disable class-methods-use-this */
 import EventEmitter from 'events';
+import { PassThrough } from 'stream';
 
 const emptyPromise = new Promise(() => {});
 
@@ -40,14 +41,17 @@ export function mockAxiosInterceptor() {
 export class MockServerResponse extends EventEmitter {
   constructor() {
     super();
-    this.stream = {
-      pushAllowed: true,
-      destroyed: false,
-      destroy() {}
-    };
+    this.stream = new PassThrough();
+    this.stream.pushAllowed = true;
   }
   createPushResponse(headers, callback) {}
   writeHead() {}
+  end(...args) {
+    this.stream.end(...args);
+  }
+  write(...args) {
+    this.stream.write(...args);
+  }
 }
 
 export function mockServerResponse() {

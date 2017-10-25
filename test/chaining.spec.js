@@ -3,6 +3,7 @@ import chai, { assert } from 'chai';
 import sinonChai from 'sinon-chai';
 import axios from 'axios';
 import moxios from 'moxios';
+import streamToString from 'stream-to-string';
 import prepareAxios from '../src';
 import { mockServerResponse } from './mocks';
 
@@ -50,6 +51,26 @@ describe('Chained requests', () => {
       type: 'json'
     }).then((response) => {
       assert.equal(response.data.foo, 'bar');
+      done();
+    });
+  });
+
+  it('pushes the response', (done) => {
+    // regression test to make sure the apiResponse stream is pushed to the
+    // client and read to string at the same time.
+    // If one happens first, the stream will be used up and it will fail.
+    const pushResponse = mockServerResponse();
+    pageResponse.createPushResponse = (headers, callback) => {
+      process.nextTick(callback, null, pushResponse);
+    };
+
+    wrappedAxios.get('/foo', {
+      chainedRequest: true,
+      type: 'json'
+    });
+
+    streamToString(pushResponse.stream).then((data) => {
+      assert.equal(data, '{"foo": "bar"}');
       done();
     });
   });
