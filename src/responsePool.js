@@ -1,8 +1,6 @@
 
 export default class ResponsePool {
-  constructor() {
-    this.responses = new Set();
-  }
+  responses = new Set();
 
   add(response) {
     if (!response.stream.destroyed) {
@@ -20,7 +18,7 @@ export default class ResponsePool {
     return this.responses.size;
   }
 
-  waitUntilEmpty() {
+  _waitForResponses() {
     return Promise.all([...this.responses].map(response =>
       new Promise((resolve) => {
         response.on('close', resolve);
@@ -28,7 +26,11 @@ export default class ResponsePool {
         if (response.finished) { // TODO is that true on close, or just finish?
           resolve();
         }
-      })))
+      })));
+  }
+
+  waitUntilEmpty() {
+    return this._waitForResponses()
       .then(() => new Promise(resolve => setTimeout(resolve, 0)))
       .then(() => {
         if (!this.responses.size) {
