@@ -18,7 +18,7 @@ export default class ResponsePool {
     return this.responses.size;
   }
 
-  _waitForResponses() {
+  waitForCurrentResponses() {
     return Promise.all([...this.responses].map(response =>
       new Promise((resolve) => {
         response.on('close', resolve);
@@ -30,7 +30,7 @@ export default class ResponsePool {
   }
 
   waitUntilEmpty() {
-    return this._waitForResponses()
+    return this.waitForCurrentResponses()
       .then(() => new Promise(resolve => setTimeout(resolve, 0)))
       .then(() => {
         if (!this.responses.size) {
