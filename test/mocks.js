@@ -43,6 +43,8 @@ export class MockServerResponse extends EventEmitter {
     super();
     this.stream = new PassThrough();
     this.stream.pushAllowed = true;
+    this.stream.on('finish', () => this.emit('finish'));
+    this.stream.on('close', () => this.emit('close'));
   }
   createPushResponse(headers, callback) {}
   writeHead() {}

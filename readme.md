@@ -60,7 +60,7 @@ res.end(html);
 ```
 Use this:
 
-```js 
+```js
 response.write(html);
 axios.waitForChained().then(() => res.end());
 ```
@@ -96,7 +96,7 @@ app.use((request, response) => {
 ```
 
 If using Redux, you can use redux-thunk's `withExtraArgument` function.
-Your redux action would look like this:
+Your Redux action would look like this:
 
 ```js
 export function getThing(id) {
@@ -121,15 +121,15 @@ class MyComponent extends Component {
 }
 ```
 
-### What if I'm not using redux?
+### What if I'm not using Redux?
 This is just one example. You could also place the axios instance in [React context](https://facebook.github.io/react/docs/context.html) instead.
 
 ### Use in the browser
 When bundled by webpack for use in a browser, `prepareAxios()` simply calls `axios.create()` and returns the instance.
 
-### Use in next.js
+### Use in Next.js
 
-You can use this in [next.js’s](https://github.com/zeit/next.js) `getInitialProps({ req, res })` function to create a wrapped axios instance for the page. In `componentWillMount`, make your api calls with the resulting axios instance if it exists, or create a new instance if it doesn't.
+You can use this in [Next.js’s](https://github.com/zeit/next.js) `getInitialProps({ req, res })` function to create a wrapped axios instance for the page. In `componentWillMount`, make your api calls with the resulting axios instance if it exists, or create a new instance if it doesn't.
 
 If using [next-redux-wrapper](https://github.com/kirill-konshin/next-redux-wrapper), you can create the axios instance in your `makeStore(initialState, { req, res })` callback function.
 
@@ -141,11 +141,11 @@ Other solutions, such as [redux-connect](https://www.npmjs.com/package/redux-con
 - It provides a better user experience by displaying some content, even if just a loading icon, as soon as possible.
 - Greater flexibility of where in your code you make your API calls. This can result in cleaner code, and it's easier to add this library to existing code.
 
-<img src="docs/sequence.png" alt="A sequence diagram shows the advantage of using HTTP/2 push for api calls"/>
+<a href="docs/sequence.png"><img src="docs/sequence.png" alt="A sequence diagram shows the advantage of using HTTP/2 push for api calls."/></a>
 
 ## Caveats
 
-While browsers do accept push promises of static resources from domains that share the same security certificate, no major browser currently accepts push promises of XHR requests from a different domain.
+While browsers do accept push promises of static resources on other domains, no major browser currently accepts push promises for API endpoints on a different domain.
 
 The http2 spec does allow for this, however, so long as both domains use the same security certificate. Hopefully browser behavior will soon change to match the spec.
 
@@ -163,4 +163,4 @@ If your api is at `api.example.com`, forward requests from `www.example.com/api/
 
  - To test this on localhost, you may have to set `process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"` so node will connect to your own local server via TLS. *DO NOT DO THIS IN PRODUCTION.*
 
- - This will work with Node.js v9, and currently works with Node.js v8.5.0 or greater with the `--enable-http2` flag.
+ - This works with Node.js v8.8.0 or greater, or Node.js v8.5.0 with the `--enable-http2` flag.

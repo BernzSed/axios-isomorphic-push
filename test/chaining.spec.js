@@ -13,6 +13,7 @@ chai.use(sinonChai);
 describe('Chained requests', () => {
 
   let pageResponse;
+  let pushResponse;
   let wrappedAxios;
 
   beforeEach(() => {
@@ -28,6 +29,10 @@ describe('Chained requests', () => {
     const actualAxios = axios.create();
 
     pageResponse = mockServerResponse();
+    pushResponse = mockServerResponse();
+    pageResponse.createPushResponse = (headers, callback) => {
+      process.nextTick(callback, null, pushResponse);
+    };
 
     wrappedAxios = prepareAxios(pageResponse, actualAxios);
   });
@@ -59,11 +64,6 @@ describe('Chained requests', () => {
     // regression test to make sure the apiResponse stream is pushed to the
     // client and read to string at the same time.
     // If one happens first, the stream will be used up and it will fail.
-    const pushResponse = mockServerResponse();
-    pageResponse.createPushResponse = (headers, callback) => {
-      process.nextTick(callback, null, pushResponse);
-    };
-
     wrappedAxios.get('/foo', {
       chainedRequest: true,
       type: 'json'
@@ -75,8 +75,31 @@ describe('Chained requests', () => {
     });
   });
 
-  it.skip('resolves a promise once chained calls have completed', (done) => {
-    // TODO
+
+  describe('Waiting for chained requests to complete', () => {
+    let waitForChainedPromise;
+
+    beforeEach(() => {
+      waitForChainedPromise = wrappedAxios.waitForChained();
+    });
+
+    it('waits for chained api calls when there aren’t any', (done) => {
+      waitForChainedPromise.then(done);
+    });
+
+    it('resolves after .then() is called on the axios promise', (done) => {
+      let thenCalled = false;
+
+      wrappedAxios.get('/foo', { chainedRequest: true })
+        .then(() => {
+          thenCalled = true;
+        });
+
+      waitForChainedPromise.then(() => {
+        assert.isOk(thenCalled);
+        done();
+      });
+    });
   });
 
 });

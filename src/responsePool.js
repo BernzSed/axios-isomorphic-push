@@ -1,3 +1,6 @@
+import { promisify } from 'util';
+
+const setImmediatePromise = promisify(setImmediate);
 
 export default class ResponsePool {
   responses = new Set();
@@ -31,7 +34,7 @@ export default class ResponsePool {
 
   waitUntilEmpty() {
     return this.waitForCurrentResponses()
-      .then(() => new Promise(resolve => setTimeout(resolve, 0)))
+      .then(setImmediatePromise())
       .then(() => {
         if (!this.responses.size) {
           return Promise.resolve();
