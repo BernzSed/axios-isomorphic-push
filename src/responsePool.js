@@ -26,7 +26,7 @@ export default class ResponsePool {
       new Promise((resolve) => {
         response.on('close', resolve);
         response.on('finish', resolve);
-        if (response.finished) { // TODO is that true on close, or just finish?
+        if (response.finished) {
           resolve();
         }
       })));
