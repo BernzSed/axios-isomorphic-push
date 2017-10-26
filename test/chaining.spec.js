@@ -43,7 +43,7 @@ describe('Chained requests', () => {
 
   it('returns a promise that resolves', (done) => {
     wrappedAxios.get('/foo', {
-      chainedRequest: true,
+      chained: true,
       type: 'json'
     }).then((response) => {
       done();
@@ -52,7 +52,7 @@ describe('Chained requests', () => {
 
   it('resolves with json from the stream', (done) => {
     wrappedAxios.get('/foo', {
-      chainedRequest: true,
+      chained: true,
       type: 'json'
     }).then((response) => {
       assert.equal(response.data.foo, 'bar');
@@ -65,7 +65,7 @@ describe('Chained requests', () => {
     // client and read to string at the same time.
     // If one happens first, the stream will be used up and it will fail.
     wrappedAxios.get('/foo', {
-      chainedRequest: true,
+      chained: true,
       type: 'json'
     });
 
@@ -77,25 +77,25 @@ describe('Chained requests', () => {
 
 
   describe('Waiting for chained requests to complete', () => {
-    let waitForChainedPromise;
+    let whenSafeToEndPromise;
 
     beforeEach(() => {
-      waitForChainedPromise = wrappedAxios.waitForChained();
+      whenSafeToEndPromise = wrappedAxios.whenSafeToEnd();
     });
 
     it('waits for chained api calls when there aren’t any', (done) => {
-      waitForChainedPromise.then(done);
+      whenSafeToEndPromise.then(done);
     });
 
     it('resolves after .then() is called on the axios promise', (done) => {
       let thenCalled = false;
 
-      wrappedAxios.get('/foo', { chainedRequest: true })
+      wrappedAxios.get('/foo', { chained: true })
         .then(() => {
           thenCalled = true;
         });
 
-      waitForChainedPromise.then(() => {
+      whenSafeToEndPromise.then(() => {
         assert.isOk(thenCalled);
         done();
       });

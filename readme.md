@@ -43,10 +43,10 @@ axios.get('/foo').then(response => { /* this block only runs on the client side 
 
 ### Chained API calls
 
-If you want to chain API calls on the server side, add `chainedRequest: true` to the request config:
+If you want to chain API calls on the server side, add `chained: true` to the request config:
 
 ```js
-axios.get('/foo', { chainedRequest: true })
+axios.get('/foo', { chained: true })
   .then(response => axios.get(`/bar?fooId=${response.data.id}`))
   .then(response => { /* this block only runs on the client side */ });
 ```
@@ -62,7 +62,7 @@ Use this:
 
 ```js
 response.write(html);
-axios.waitForChained().then(() => res.end());
+axios.whenSafeToEnd().then(() => res.end());
 ```
 
 ## Example:

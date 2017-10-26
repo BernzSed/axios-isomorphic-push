@@ -29,7 +29,7 @@ const responseDataConverters = {
 };
 
 function shouldBeChained(config) {
-  return config.chainedRequest && canReturnResponse(config);
+  return config.chained && canReturnResponse(config);
 }
 function canReturnResponse(config) {
   return !!responseDataConverters[config.originalResponseType];
@@ -52,7 +52,6 @@ function convertToOriginalResponseType(response) {
   const convertData = responseDataConverters[originalResponseType];
   if (convertData) {
     return convertData(response.data).then(data => ({
-      // TODO this won't work if response is a class instance. Double check that.
       ...response,
       data,
       config: {

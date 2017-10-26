@@ -129,7 +129,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
               // Can't reject the promise because nothing will catch() it.
               cancelSource.cancel('Push promise failed');
             } else {
-              if (config.chainedRequest) {
+              if (config.chained) {
                 chainedResponses.add(pushResponse);
               }
 
@@ -196,7 +196,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
 
   axiosWrapper.targetAxios = targetAxios;
 
-  axiosWrapper.waitForChained = () => chainedResponses.waitUntilEmpty();
+  axiosWrapper.whenSafeToEnd = () => chainedResponses.waitUntilEmpty();
 
   return axiosWrapper;
 }
