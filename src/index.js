@@ -104,7 +104,7 @@ function sendPushPromise(pageResponse, requestHeaders, cancelSource) {
 }
 
 function getRequestURL(config) {
-  const baseURL = config.baseURL;
+  const { baseURL } = config;
   const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
     combineURLs(baseURL, config.url) :
     config.url;
@@ -149,9 +149,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const pushResponsePromise
         = sendPushPromise(pageResponse, requestHeaders, cancelSource);
 
-      pushResponsePromise.then(
-        pushResponse => chainedResponses.add(pushResponse)
-      );
+      pushResponsePromise.then(pushResponse =>
+        chainedResponses.add(pushResponse));
 
       const newConfig = {
         ...config,
