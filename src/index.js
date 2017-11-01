@@ -81,6 +81,36 @@ function getRequestHeaders(config, requestURL) {
   return requestHeaders;
 }
 
+function sendPushPromise(pageResponse, requestHeaders, cancelSource) {
+  return new Promise((resolve) => {
+    pageResponse.createPushResponse(
+      requestHeaders,
+      (err, pushResponse) => {
+        if (err) {
+          // Can't reject the promise because nothing will catch() it.
+          cancelSource.cancel('Push promise failed');
+        } else {
+          pushResponse.on('close', () => {
+            // The browser sent RST_STREAM requesting to cancel.
+            // You can get Chrome to send this by refreshing the
+            // view-source: page at least once; it refuses duplicate pushes.
+            cancelSource.cancel('Push stream closed');
+          });
+          resolve(pushResponse);
+        }
+      }
+    );
+  });
+}
+
+function getRequestURL(config) {
+  const baseURL = config.baseURL;
+  const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
+    combineURLs(baseURL, config.url) :
+    config.url;
+  return url.parse(requestURLString);
+}
+
 /**
  * Wraps axios in something that will monitor requests/responses and
  * will issue push promises
@@ -89,14 +119,13 @@ function getRequestHeaders(config, requestURL) {
  * @return {object} returns an axios instance that will issue push promises automatically.
  */
 export default function prepareAxios(pageResponse, axiosParam = null) {
-  const targetAxios = getTargetAxios(axiosParam);
-
   if (global.window || !pageResponse) {
     // don't wrap it if on client side
     return browser.prepareAxios(pageResponse, axiosParam);
   }
 
   const chainedResponses = new ResponsePool();
+  const targetAxios = getTargetAxios(axiosParam);
 
   // Unfortunately, we can't use a real request interceptor.
   // Axios doesn't call its request interceptors immediately, so the
@@ -107,11 +136,7 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
   function interceptRequest(params, method, hasData) {
     const config = getRequestConfig(params, method, hasData, targetAxios);
 
-    const baseURL = config.baseURL || targetAxios.defaults.baseURL;
-    const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
-      combineURLs(baseURL, config.url) :
-      config.url;
-    const requestURL = url.parse(requestURLString);
+    const requestURL = getRequestURL(config);
 
     if (canPush(pageResponse, requestURL, config)) {
       // issue a push promise, with correct authority, path, and headers.
@@ -121,29 +146,12 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
       const cancelSource = CancelToken.source();
       // TODO if existing config.token, combine it with this one.
 
-      const pushResponsePromise = new Promise((resolve) => {
-        pageResponse.createPushResponse(
-          requestHeaders,
-          (err, pushResponse) => {
-            if (err) {
-              // Can't reject the promise because nothing will catch() it.
-              cancelSource.cancel('Push promise failed');
-            } else {
-              if (config.chained) {
-                chainedResponses.add(pushResponse);
-              }
+      const pushResponsePromise
+        = sendPushPromise(pageResponse, requestHeaders, cancelSource);
 
-              pushResponse.on('close', () => {
-                // The browser sent RST_STREAM requesting to cancel.
-                // You can get Chrome to send this by refreshing the
-                // view-source: page at least once; it refuses duplicate pushes.
-                cancelSource.cancel('Push stream closed');
-              });
-              resolve(pushResponse);
-            }
-          }
-        );
-      });
+      pushResponsePromise.then(
+        pushResponse => chainedResponses.add(pushResponse)
+      );
 
       const newConfig = {
         ...config,
@@ -196,6 +204,8 @@ export default function prepareAxios(pageResponse, axiosParam = null) {
 
   axiosWrapper.targetAxios = targetAxios;
 
+  // pageResponse.stream must be open to send a push_promise,
+  // but we can fulfill the push_promise after pageResponse has closed.
   axiosWrapper.whenSafeToEnd = () => chainedResponses.waitUntilEmpty();
 
   return axiosWrapper;

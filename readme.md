@@ -24,9 +24,9 @@ When serving a webpage over HTTP/2, the server can also promise to send other re
 
 Call it just before server-side rendering. The function takes two arguments:
 
-`const axios = prepareAxios(response, [axiosInit])`
+`const axios = prepareAxios(res, [axiosInit])`
 
-- `response` – [`<Http2ServerResponse>`](https://nodejs.org/api/http2.html#http2_class_http2_http2serverresponse) for the currently rendering webpage.
+- `res` – [`<Http2ServerResponse>`](https://nodejs.org/api/http2.html#http2_class_http2_http2serverresponse) for the currently rendering webpage.
 - `axiosInit` – (Optional) Either an [Axios instance](https://github.com/axios/axios#creating-an-instance), or an Axios config object.
 
 It returns an instance of Axios. Use it in place of `axios.create()` on the server side.
@@ -61,7 +61,7 @@ res.end(html);
 Use this:
 
 ```js
-response.write(html);
+res.write(html);
 axios.whenSafeToEnd().then(() => res.end());
 ```
 
@@ -102,7 +102,7 @@ Your Redux action would look like this:
 export function getThing(id) {
   return (dispatch, getState, axios) => {
     axios.get(`/api/things/${id}`).then(
-      (thing) => dispatch(putThingInStore(thing)),
+      (response) => dispatch(putThingInStore(response.data)),
       (error) => dispatch(couldNotGetThing(error))
     );
   };

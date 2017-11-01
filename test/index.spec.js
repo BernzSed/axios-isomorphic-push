@@ -228,7 +228,7 @@ describe('When sending a push promise', () => {
       responseInterceptor(apiResponse);
     });
 
-    describe('when the api has error', () => {
+    describe('when the api has an error', () => {
       let error;
       beforeEach(() => {
         error = {
