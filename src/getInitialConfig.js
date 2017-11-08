@@ -1,4 +1,4 @@
-import { merge } from 'axios/lib/utils';
+import merge from './utils/merge';
 
 // for request that contain no data (GET, HEAD, DELETE)
 function getInitialConfigWithoutData(method, [arg1, arg2]) {
@@ -27,6 +27,5 @@ export default function getInitialConfig(params, method, hasData, targetAxios) {
     getInitialConfigWithData(method, params) :
     getInitialConfigWithoutData(method, params);
 
-  // TODO maybe don't use so many internal functions from axios/lib
   return merge(targetAxios.defaults, paramsConfig);
 }

@@ -3,10 +3,11 @@ import { CancelToken } from 'axios';
 import isAbsoluteUrl from 'axios/lib/helpers/isAbsoluteURL';
 import combineURLs from 'axios/lib/helpers/combineURLs';
 
-const pushableMethods = ['GET']; // TODO can I push_promise HEAD?
+const pushableMethods = ['GET'];
 
 function getRequestURL(config) {
   const { baseURL } = config;
+  // TODO don't use so many internal functions from axios/lib
   const requestURLString = baseURL && !isAbsoluteUrl(config.url) ?
     combineURLs(baseURL, config.url) :
     config.url;
